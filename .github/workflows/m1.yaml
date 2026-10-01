@@ -1,0 +1,63 @@
+name: m1_workflow
+run-name: milestone-1
+on:
+  push:
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'Log level'
+        required: true
+        default: 'warning'
+        type: choice
+        options:
+          - info
+          - warning
+          - debug
+      print_tags:
+        description: 'True to print to STDOUT'
+        required: true
+        type: boolean
+        default: false
+  repository_dispatch:
+    types: [my-event]
+  issue_comment:
+    types:
+      - created
+jobs:
+  init:
+    runs-on: [self-hosted]
+    outputs:
+      bar: ${{ steps.init3.outputs.bar }}
+    steps:
+      - name: init1
+        run: |
+          printenv | sort
+          echo "foo=bar" >> $GITHUB_ENV
+      - name: init2
+        run: |
+          echo "Getting a foo - $foo"
+      - name: init3
+        id: init3
+        run: |
+          echo "bar=foo" >> $GITHUB_OUTPUT
+  process:
+    runs-on: [self-hosted]
+    needs: init
+    steps:
+      - name: process1
+        run: |
+          printenv | sort
+          echo "Getting a bar - ${{needs.init.outputs.bar}}"
+  add-comment:
+    runs-on: [self-hosted]
+    permissions:
+      issues: write
+    steps:
+      - name: Post comment to the issue
+        if: ${{ github.event.issue.number != '' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh issue comment $ISSUE_NUMBER --repo $GH_REPO --body "Thanks for opening this issue! We will take a look soon. 🚀"
