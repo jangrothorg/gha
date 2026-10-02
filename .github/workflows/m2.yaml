@@ -49,9 +49,8 @@ jobs:
       - name: explicit-always
         if: always()
         run: echo "runs regardless of earlier failures"
-      - name: will fail
-        run: exit 1
-      - name: will fail
+        #      - name: will fail
+      - name: run on failure
         if: failure()
         run: echo "runs on failure"
   # --- Job-level if: availability ---
@@ -66,14 +65,24 @@ jobs:
     steps:
       - run: echo "placeholder so the job has at least one step"
   # --- Workflow command annotations ---
+  # Bare form: message only, shows up as a plain log-colored line.
+  # With params: title/file/line attach it to a specific file+line, which is what
+  # surfaces it as an inline annotation on the run summary / Files Changed view —
+  # that's the whole point of the params, so compare the two.
   annotations:
     runs-on: [self-hosted]
     steps:
       - name: bare-error
-        run: echo "::error::TODO a bare error message"
-    # TODO: error-with-params   -> ::error title=...,file=...,line=...::message
-    # TODO: bare + with-params for ::warning:: and ::notice:: too
-    # Check both the raw log AND the "Files Changed" / run summary annotations view —
-    # that's the whole point of the file=/line= params.
+        run: echo "::error::This is a bare error message"
+      - name: error-with-params
+        run: echo "::error title=Build Failed,file=.github/workflows/m2.yaml,line=1::This is an error message with parameters"
+      - name: bare-warning
+        run: echo "::warning::This is a bare warning message"
+      - name: warning-with-params
+        run: echo "::warning title=Possible Issue,file=.github/workflows/m2.yaml,line=1::This is a warning message with parameters"
+      - name: bare-notice
+        run: echo "::notice::This is a bare notice message"
+      - name: notice-with-params
+        run: echo "::notice title=FYI,file=.github/workflows/m2.yaml,line=1::This is a notice message with parameters"
 
 # Don't forget the non-YAML part of this milestone: add a status badge to the repo README.
