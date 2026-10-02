@@ -30,8 +30,11 @@ jobs:
       bar: ${{ steps.init3.outputs.bar }}
     steps:
       - name: init1
+        if: ${{ inputs.print_tags }}
         run: |
           printenv | sort
+      - name: init1b
+        run: |
           echo "foo=bar" >> $GITHUB_ENV
       - name: init2
         run: |
@@ -45,8 +48,11 @@ jobs:
     needs: init
     steps:
       - name: process1
+        if: ${{ inputs.print_tags }}
         run: |
           printenv | sort
+      - name: process1b
+        run: |
           echo "Getting a bar - ${{needs.init.outputs.bar}}"
   add-comment:
     runs-on: [self-hosted]
@@ -60,4 +66,4 @@ jobs:
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           GH_REPO: ${{ github.repository }}
         run: |
-          gh issue comment $ISSUE_NUMBER --repo $GH_REPO --body "Thanks for opening this issue! We will take a look soon. 🚀"
+          gh issue comment $ISSUE_NUMBER --repo $GH_REPO --body "Thanks for the comment! 🚀"
