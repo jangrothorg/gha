@@ -1,7 +1,7 @@
 name: m1_workflow
 run-name: milestone-1
 on:
-  push:
+  # push:
   workflow_dispatch:
     inputs:
       logLevel:

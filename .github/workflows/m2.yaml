@@ -1,0 +1,79 @@
+name: m2_workflow
+run-name: milestone-2
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  # --- Dump every context into the job summary with toJSON() ---
+  # One is done for you so you've got the pattern; do the rest yourself.
+  # contexts to cover: github, runner, env, vars, job, steps
+  # (matrix needs a strategy to be non-empty; secrets won't render values, but dump it
+  # anyway and see what *keys* show up)
+  dump-contexts:
+    runs-on: [self-hosted]
+    steps:
+      - name: dump-github
+        env:
+          GITHUB_CONTEXT: ${{ toJSON(github) }}
+          RUNNER_CONTEXT: ${{ toJSON(runner) }}
+          ENV_CONTEXT: ${{ toJSON(env) }}
+          VARS_CONTEXT: ${{ toJSON(vars) }}
+          JOB_CONTEXT: ${{ toJSON(job) }}
+          STEPS_CONTEXT: ${{ toJSON(steps) }}
+        run: |
+          echo "$GITHUB_CONTEXT" >> $GITHUB_STEP_SUMMARY
+          echo "$RUNNER_CONTEXT" >> $GITHUB_STEP_SUMMARY
+          echo "$ENV_CONTEXT" >> $GITHUB_STEP_SUMMARY
+          echo "$VARS_CONTEXT" >> $GITHUB_STEP_SUMMARY
+          echo "$JOB_CONTEXT" >> $GITHUB_STEP_SUMMARY
+          echo "$STEPS_CONTEXT" >> $GITHUB_STEP_SUMMARY
+  # --- Drill the expression functions ---
+  functions-drill:
+    runs-on: [self-hosted]
+    steps:
+      - name: string-functions
+        run: |
+          echo "${{ contains('Hello world', 'llo') }}"
+          echo "${{ contains('Hello world', 'what') }}"
+          echo "${{ startsWith('Hello world', 'llo') }}"
+          echo "${{ startsWith('Hello world', 'He') }}"
+          echo "${{ endsWith('Hello world', 'rld') }}"
+          echo "${{ endsWith('Hello world', 'rd') }}"
+  # --- Status-check functions: success() / failure() / always() / cancelled() ---
+  status-checks:
+    runs-on: [self-hosted]
+    needs: dump-contexts
+    steps:
+      - name: implicit-success
+        run: 'echo "no if: at all -> implicitly if: success()"'
+      - name: explicit-always
+        if: always()
+        run: echo "runs regardless of earlier failures"
+      - name: will fail
+        run: exit 1
+      - name: will fail
+        if: failure()
+        run: echo "runs on failure"
+  # --- Job-level if: availability ---
+  # TODO: give this job an `if:` that references `secrets` (e.g. secrets.SOME_SECRET != '')
+  # and watch the run fail to even start. Then replace it with something legal
+  # (vars, or a needs output) and confirm it works.
+  if-availability-test:
+    runs-on: [self-hosted]
+    needs: dump-contexts
+    # if: secrets.SOME_SECRET != ''
+    if: vars.SOME_SECRET != ''
+    steps:
+      - run: echo "placeholder so the job has at least one step"
+  # --- Workflow command annotations ---
+  annotations:
+    runs-on: [self-hosted]
+    steps:
+      - name: bare-error
+        run: echo "::error::TODO a bare error message"
+    # TODO: error-with-params   -> ::error title=...,file=...,line=...::message
+    # TODO: bare + with-params for ::warning:: and ::notice:: too
+    # Check both the raw log AND the "Files Changed" / run summary annotations view —
+    # that's the whole point of the file=/line= params.
+
+# Don't forget the non-YAML part of this milestone: add a status badge to the repo README.
