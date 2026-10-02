@@ -5,10 +5,9 @@ on:
   workflow_dispatch:
 jobs:
   # --- Dump every context into the job summary with toJSON() ---
-  # One is done for you so you've got the pattern; do the rest yourself.
-  # contexts to cover: github, runner, env, vars, job, steps
-  # (matrix needs a strategy to be non-empty; secrets won't render values, but dump it
-  # anyway and see what *keys* show up)
+  # Every ${{ toJSON(...) }} is routed through env: and read back as "$VAR" rather than
+  # interpolated straight into run: — direct interpolation broke the first version of this
+  # step the moment a dumped value (a commit message) contained an unescaped single quote.
   dump-contexts:
     runs-on: [self-hosted]
     steps:
@@ -49,18 +48,16 @@ jobs:
       - name: explicit-always
         if: always()
         run: echo "runs regardless of earlier failures"
-        #      - name: will fail
       - name: run on failure
         if: failure()
         run: echo "runs on failure"
   # --- Job-level if: availability ---
-  # TODO: give this job an `if:` that references `secrets` (e.g. secrets.SOME_SECRET != '')
-  # and watch the run fail to even start. Then replace it with something legal
-  # (vars, or a needs output) and confirm it works.
+  # `secrets` isn't a legal context at jobs.<id>.if, regardless of the expression's result
+  # type — confirmed: `if: secrets.SOME_SECRET != ''` fails the run before any job starts.
+  # vars IS legal here, so that's what's live below.
   if-availability-test:
     runs-on: [self-hosted]
     needs: dump-contexts
-    # if: secrets.SOME_SECRET != ''
     if: vars.SOME_SECRET != ''
     steps:
       - run: echo "placeholder so the job has at least one step"
@@ -84,5 +81,3 @@ jobs:
         run: echo "::notice::This is a bare notice message"
       - name: notice-with-params
         run: echo "::notice title=FYI,file=.github/workflows/m2.yaml,line=1::This is a notice message with parameters"
-
-# Don't forget the non-YAML part of this milestone: add a status badge to the repo README.
