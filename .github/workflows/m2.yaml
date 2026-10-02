@@ -1,7 +1,7 @@
 name: m2_workflow
 run-name: milestone-2
 on:
-  push:
+  #  push:
   workflow_dispatch:
 jobs:
   # --- Dump every context into the job summary with toJSON() ---
