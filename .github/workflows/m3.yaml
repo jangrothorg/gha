@@ -2,37 +2,30 @@ name: m3_workflow
 run-name: milestone-3
 on:
   workflow_dispatch:
-# TODO: add a concurrency: block here (group + cancel-in-progress: true), then push
-# twice quickly and watch the second run cancel the first instead of queuing behind it.
-# concurrency:
-#   group: ???
-#   cancel-in-progress: true
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   # --- Matrix: two axes, then include/exclude ---
-  # All jobs below run on Kylo (the only runner we've got), so this matrix varies
-  # values, not OS — the concept's the same either way.
+  # Runs on Kylo, so this matrix varies values, not OS — the concept's the same
+  # either way. (The service-container jobs further down use ubuntu-latest instead —
+  # see the comment there.)
   matrix_job:
     runs-on: [self-hosted]
     strategy:
-      fail-fast: true # TODO: flip to false once you've seen the default behavior, compare
+      fail-fast: true
       matrix:
-        version: [18, 20, 22]
+        version: [18, 22]
         config: [debug, release]
-        # TODO: add an `include:` entry that creates a combination NOT already covered
-        # by the cross product above (e.g. version: 16, config: legacy) — prove include
-        # can ADD a combo, not just annotate an existing one.
-        # TODO: add an `exclude:` entry that removes one of the 6 combinations above.
-        # Predict the resulting job count before you run this.
+        include:
+          - version: 16
+            config: legacy
+        exclude:
+          - version: 22
+            config: debug
     steps:
       - name: show-combo
         run: echo "version=${{ matrix.version }} config=${{ matrix.config }}"
-        # TODO: add a step that fails for exactly one combination, e.g.
-        #   if: matrix.version == 18
-        #   run: exit 1
-        # — that's what makes fail-fast actually do something observable.
   # --- needs diamond: two parallel jobs feeding one join job ---
   diamond_a:
     runs-on: [self-hosted]
@@ -44,25 +37,27 @@ jobs:
     needs: matrix_job
     steps:
       - run: echo "diamond_b"
-        # TODO: make this step fail on purpose (temporarily) to test the gates below,
-        # then put it back.
   diamond_join:
     runs-on: [self-hosted]
     needs: [diamond_a, diamond_b]
-    # TODO: try `if: always()` here first, run it, then switch to `if: failure()` and
-    # run it again — note which combinations of diamond_a/diamond_b success/failure
-    # actually let this job execute under each.
     steps:
       - name: report
         run: |
           echo "diamond_a result: ${{ needs.diamond_a.result }}"
           echo "diamond_b result: ${{ needs.diamond_b.result }}"
+          echo "matrix_job result: ${{ needs.matrix_job }}"
+
           # TODO: also echo needs.matrix_job.result here. matrix_job had 6 (or however
           # many after include/exclude) legs — what does a single .result value report
           # for a job that was actually a matrix?
   # --- Service container, addressed two different ways ---
+  # services:/container: require a LINUX runner — self-hosted runners on macOS or
+  # Windows can't run either, full stop, regardless of whether Docker is installed.
+  # Kylo's on macOS, so these two jobs use GitHub-hosted ubuntu-latest instead —
+  # free and unlimited on a public repo, and it's the exact same services:/container:
+  # syntax the exam tests either way.
   service_localhost:
-    runs-on: [self-hosted]
+    runs-on: ubuntu-latest
     services:
       postgres:
         image: postgres:16
@@ -75,12 +70,13 @@ jobs:
     steps:
       - name: connect-via-localhost
         run: |
-          # TODO: this job runs directly on Kylo (no container:), so the service's
-          # port mapping is reachable at localhost:5432. Prove it — psql, nc, curl,
-          # whatever's on hand.
+          # TODO: this job runs directly on the runner (no container:), so the
+          # service's port mapping is reachable at localhost:5432. Prove it —
+          # psql, nc, curl, whatever's on hand.
           echo "placeholder"
+          ss -tulpn
 
 # TODO: copy service_localhost above, rename the job, add `container: <some image>`
-# to the job itself, and change the connection step to address the service by its
-# label (postgres:5432) instead of localhost — no ports: mapping needed once both
-# the job and the service share Docker's user-defined network.
+# to the job itself (also runs-on: ubuntu-latest), and change the connection step to
+# address the service by its label (postgres:5432) instead of localhost — no ports:
+# mapping needed once both the job and the service share Docker's user-defined network.
