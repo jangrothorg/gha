@@ -71,22 +71,26 @@ Based on diagnostic conversation (2026-09-29), 1/16 cold. Milestone-based, no fi
 ## Milestone 4 — YAML mechanics & the three reuse models (2-3 sessions)
 
 - **Theory (30-45min):** [Reusing workflow configurations](https://docs.github.com/en/actions/reference/workflows-and-actions/reusing-workflow-configurations) for YAML anchors/aliases in an Actions context. [Reuse workflows](https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows) for `workflow_call`, inputs, secrets, outputs. [Creating workflow templates for your organization](https://docs.github.com/en/actions/how-tos/reuse-automations/create-workflow-templates) for starter workflows (`workflow-templates/`, `.properties.json`).
-- **Hands-on (1-2 sessions):** Write an anchor/alias/merge example (`&name`, `*name`, `<<:`) reusing a repeated step block inside one workflow file. Then hand-expand an anchored workflow you didn't write — the exam asks you to _read_ these, not just write them. Build a reusable workflow with typed `inputs`, a required `secrets` entry, and an `outputs` block; call it from another workflow with `jobs.<id>.uses`. Build the same call again using `secrets: inherit` and compare what each version actually exposes. Create the org's `.github` repo, add a `workflow-templates/` starter workflow with its `.properties.json`, and create a new workflow from it in `gha`.
+- **Hands-on (1-2 sessions):** Try a YAML merge key (`<<: *something`) to reuse a repeated step's fields and watch GitHub reject the workflow outright (`Unexpected value '<<'`) — merge keys are valid generic YAML but GitHub's own parser doesn't support them. Then write a working anchor/alias example (`&name`, `*name`) reusing an entire `env:` block (or a whole job) across two jobs in one file — whole-value substitution is the only pattern that's actually supported. Then hand-expand an anchored workflow you didn't write — the exam asks you to _read_ these, not just write them. Build a reusable workflow with typed `inputs`, a required `secrets` entry, and an `outputs` block; call it from another workflow with `jobs.<id>.uses`. Build the same call again using `secrets: inherit` and compare what each version actually exposes. Create the org's `.github` repo, add a `workflow-templates/` starter workflow with its `.properties.json`, and create a new workflow from it in `gha`.
 - **Recall check:** write the starter/reusable/composite comparison table from memory — where each one's definition lives, how it's invoked, whether updates propagate.
 
 **Exam summary:**
 
 - _Anchors are file-scoped_ — they can't cross files, so they're not an alternative to reusable workflows or composite actions, only to repetition inside one workflow file.
+- _GitHub Actions only supports whole-value anchor/alias substitution — not the YAML merge key._ Generic YAML (and most parsers of it — Ruby's Psych, PyYAML, Docker Compose) support `<<:` to merge a mapping's keys as defaults with local overrides. GitHub's own workflow parser rejects `<<:` outright with `Unexpected value '<<'` — confirmed live, not just undocumented. The only thing that actually works is replacing an entire value with an alias, nothing partial:
   ```yaml
-  x-defaults: &defaults
-    shell: bash
-    working-directory: ./app
   jobs:
-    build:
+    job1:
+      env: &shared_env
+        NODE_ENV: production
       steps:
-        - <<: *defaults
-          run: make build
+        - run: echo hello
+    job2:
+      env: *shared_env # the whole value, as-is — nothing can be added or overridden
+      steps:
+        - run: echo world
   ```
+  The same mechanism aliases an entire job (`alt-test: *base_job`) — but there's no reuse-with-override. Any difference at all means writing the value out again, not aliasing it.
 - _Starter vs reusable vs composite:_
 
   |                       | Lives                                                                       | Invoked                                                  | Updates propagate?               |
