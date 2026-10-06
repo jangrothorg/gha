@@ -46,10 +46,10 @@ jobs:
           echo "diamond_a result: ${{ needs.diamond_a.result }}"
           echo "diamond_b result: ${{ needs.diamond_b.result }}"
           echo "matrix_job result: ${{ needs.matrix_job.result }}"
-
-          # TODO: also echo needs.matrix_job.result here. matrix_job had 6 (or however
-          # many after include/exclude) legs — what does a single .result value report
-          # for a job that was actually a matrix?
+          # Confirmed: a single aggregated string (success/failure/...), not one per leg —
+          # and it only showed up once matrix_job was added to THIS job's own needs: list.
+          # needs is non-transitive: diamond_a/diamond_b needing matrix_job didn't make it
+          # visible here until diamond_join named it directly too.
   # --- Service container, addressed two different ways ---
   # services:/container: require a LINUX runner — self-hosted runners on macOS or
   # Windows can't run either, full stop, regardless of whether Docker is installed.
@@ -69,25 +69,14 @@ jobs:
           --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
       - name: connect-via-localhost
+        env:
+          PGPASSWORD: postgres
         run: |
-          # TODO: this job runs directly on the runner (no container:), so the
-          # service's port mapping is reachable at localhost:5432. Prove it —
-          # psql, nc, curl, whatever's on hand.
-          echo "placeholder"
-          ss -tulpn
-  service_nginx:
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: nginx
-    steps:
-      - name: connect-via-localhost
-        run: |
-          # TODO: this job runs directly on the runner (no container:), so the
-          # service's port mapping is reachable at localhost:5432. Prove it —
-          # psql, nc, curl, whatever's on hand.
-          echo "placeholder"
-          ss -tulpn
+          # No container: on this job, so the service's `ports:` mapping is what makes
+          # it reachable at all — address it via localhost, same as any other port
+          # forwarded from the runner's host network.
+          sudo apt-get install -y postgresql-client >/dev/null
+          psql -h localhost -U postgres -c 'select 1;'
   # Job itself now runs inside a container (postgres:16, same image, so psql is
   # already on hand) — that puts both the job and the service on the same Docker
   # user-defined network, so no ports: mapping is needed, and the service is reached
