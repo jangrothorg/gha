@@ -1,0 +1,75 @@
+name: m4_workflow
+run-name: milestone-4
+
+on:
+  workflow_dispatch:
+
+jobs:
+  # --- Anchors/aliases/merge: write your own ---
+  # TODO: define an anchor (&name) on a small step or mapping above this job, reference
+  # it twice with an alias (*name), and use a merge key (<<:) to combine it with
+  # something else in at least one spot. Has to stay in this file — anchors don't
+  # cross files, that's the whole reason they're not a substitute for reusable
+  # workflows or composite actions.
+  anchors_mine:
+    runs-on: [self-hosted]
+    steps:
+      - run: echo "TODO replace this with your own anchor/alias/merge example"
+
+  # --- Anchors/aliases/merge: someone else's, for you to hand-expand ---
+  # Don't edit this job. Before running it, write out — on paper, in a scratch file,
+  # wherever — what each of the three steps below fully expands to once &defaults and
+  # the merge keys are resolved. Then run it and check the step names/log output
+  # against what you predicted.
+  anchors_theirs:
+    runs-on: [self-hosted]
+    steps:
+      - &defaults
+        name: step-using-defaults-1
+        shell: bash
+        working-directory: .
+        run: echo "first use of the anchor"
+      - <<: *defaults
+        name: step-using-defaults-2
+        run: 'echo "second use: run: overridden, shell/working-directory inherited"'
+      - <<: *defaults
+        name: step-using-defaults-3
+        env:
+          EXTRA: set-via-merge
+        run: 'echo "third use: shell/working-directory inherited, EXTRA added fresh"'
+
+  # --- Reusable workflow, called two ways ---
+  # One-time setup so there's something real to pass/inherit below:
+  #   gh secret set DEMO_SECRET --body "whatever" --repo jangrothorg/gha
+  # m4_reusable.yaml tolerates a missing secret too, so both calls still run either way.
+  call_explicit:
+    uses: ./.github/workflows/m4_reusable.yaml
+    with:
+      greeting: "called with an explicit secrets: mapping"
+    secrets:
+      DEMO_SECRET: ${{ secrets.DEMO_SECRET }}
+
+  call_inherit:
+    uses: ./.github/workflows/m4_reusable.yaml
+    with:
+      greeting: "called with secrets: inherit"
+    secrets: inherit
+
+  # TODO: once both calls above have run, compare their logs for the
+  # "DEMO_SECRET is/is NOT visible here" line. With only one secret in this repo
+  # they'll look the same — the real difference between explicit mapping and
+  # `inherit` is what each call is GRANTED ACCESS TO, not what gets touched in this
+  # particular test. Add a second repo secret, then only pass it through the
+  # explicit-mapping call, and watch inherit expose it anyway.
+
+# --- Starter workflow: lives in a different repo, not this file ---
+# Needs its own `.github` repo in the org, with
+# workflow-templates/<name>.yml + workflow-templates/<name>.properties.json.
+# TODO:
+#   1. gh repo create jangrothorg/.github --public
+#   2. In it: workflow-templates/m4-starter.yml (any trivial workflow) plus
+#      workflow-templates/m4-starter.properties.json — "name" is the only required
+#      key; see the Creating workflow templates doc linked in the study plan.
+#   3. Back in gha: Actions tab -> New workflow -> it should show up under
+#      "By jangrothorg" alongside GitHub's own templates. Create one from it, then
+#      confirm editing the copy in gha does NOT touch the template in .github.

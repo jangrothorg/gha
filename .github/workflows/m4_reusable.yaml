@@ -1,0 +1,35 @@
+name: m4_reusable
+run-name: milestone-4-reusable
+
+on:
+  workflow_call:
+    inputs:
+      greeting:
+        description: 'Text to echo back as this call'
+        required: true
+        type: string
+    secrets:
+      DEMO_SECRET:
+        required: false
+    outputs:
+      echoed:
+        description: 'Echoes the greeting input back to the caller'
+        value: ${{ jobs.say_hello.outputs.echoed }}
+
+jobs:
+  say_hello:
+    runs-on: [self-hosted]
+    outputs:
+      echoed: ${{ steps.say.outputs.echoed }}
+    steps:
+      - id: say
+        env:
+          DEMO_SECRET: ${{ secrets.DEMO_SECRET }}
+        run: |
+          echo "greeting=${{ inputs.greeting }}"
+          if [ -n "$DEMO_SECRET" ]; then
+            echo "DEMO_SECRET is visible here"
+          else
+            echo "DEMO_SECRET is NOT visible here"
+          fi
+          echo "echoed=${{ inputs.greeting }}" >> "$GITHUB_OUTPUT"
