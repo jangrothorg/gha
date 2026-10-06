@@ -39,13 +39,13 @@ jobs:
       - run: echo "diamond_b"
   diamond_join:
     runs-on: [self-hosted]
-    needs: [diamond_a, diamond_b]
+    needs: [diamond_a, diamond_b, matrix_job]
     steps:
       - name: report
         run: |
           echo "diamond_a result: ${{ needs.diamond_a.result }}"
           echo "diamond_b result: ${{ needs.diamond_b.result }}"
-          echo "matrix_job result: ${{ needs.matrix_job }}"
+          echo "matrix_job result: ${{ needs.matrix_job.result }}"
 
           # TODO: also echo needs.matrix_job.result here. matrix_job had 6 (or however
           # many after include/exclude) legs — what does a single .result value report
@@ -75,8 +75,35 @@ jobs:
           # psql, nc, curl, whatever's on hand.
           echo "placeholder"
           ss -tulpn
-
-# TODO: copy service_localhost above, rename the job, add `container: <some image>`
-# to the job itself (also runs-on: ubuntu-latest), and change the connection step to
-# address the service by its label (postgres:5432) instead of localhost — no ports:
-# mapping needed once both the job and the service share Docker's user-defined network.
+  service_nginx:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: nginx
+    steps:
+      - name: connect-via-localhost
+        run: |
+          # TODO: this job runs directly on the runner (no container:), so the
+          # service's port mapping is reachable at localhost:5432. Prove it —
+          # psql, nc, curl, whatever's on hand.
+          echo "placeholder"
+          ss -tulpn
+  # Job itself now runs inside a container (postgres:16, same image, so psql is
+  # already on hand) — that puts both the job and the service on the same Docker
+  # user-defined network, so no ports: mapping is needed, and the service is reached
+  # by its label (postgres) as a hostname instead of localhost.
+  service_in_container:
+    runs-on: ubuntu-latest
+    container: postgres:16
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+    steps:
+      - name: connect-via-label
+        env:
+          PGPASSWORD: postgres
+        run: psql -h postgres -U postgres -c 'select 1;'
