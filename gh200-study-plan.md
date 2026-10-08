@@ -107,7 +107,7 @@ whole _jobs_, a composite action supplies _steps_.
 
 ## Milestone 5 — Custom actions I: building all three types (2 sessions)
 
-- **Theory (30min):** `action.yml` metadata reference — required fields per action type. Creating a composite action. Creating a JavaScript action. Creating a Docker container action.
+- **Theory (30min):** [Metadata syntax for GitHub Actions](https://docs.github.com/en/actions/reference/workflows-and-actions/metadata-syntax) — required fields per action type. [Creating a composite action](https://docs.github.com/en/actions/tutorials/create-actions/create-a-composite-action). [Creating a JavaScript action](https://docs.github.com/en/actions/tutorials/create-actions/create-a-javascript-action). [Creating a Docker container action](https://docs.github.com/en/actions/tutorials/use-containerized-services/create-a-docker-container-action).
 - **Hands-on (1-2 sessions):** Build a composite action (`runs.using: composite`) wrapping three `run` steps, each needing its own `shell:`; wire an input through and set an output via `GITHUB_OUTPUT` plus `outputs.<x>.value`. Build a JavaScript action (`runs.using: node20`) using `@actions/core` for inputs/outputs, bundle with `ncc`, and commit `dist/`. Build a Docker action (`runs.using: docker`) with a Dockerfile, `args`, and `env`. Break each one on purpose — remove a `shell:`, misname an input, ship an unbundled JS action — and read the failure until it's recognisable at a glance.
 - **Recall check:** name the three action types, the metadata filename, and the `runs.using` value for each.
 
