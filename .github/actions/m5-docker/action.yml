@@ -1,0 +1,12 @@
+name: 'm5-docker-greet'
+description: 'Milestone 5 Docker action — greets someone'
+inputs:
+  who-to-greet:
+    description: 'Who to greet'
+    required: true
+    default: 'World'
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  args:
+    - ${{ inputs.who-to-greet }}

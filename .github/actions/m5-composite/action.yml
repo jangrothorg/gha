@@ -1,0 +1,33 @@
+name: 'm5-composite-greet'
+description: 'Milestone 5 composite action — greets someone, reports back a greeting'
+inputs:
+  who-to-greet:
+    description: 'Who to greet'
+    required: true
+    default: 'World'
+outputs:
+  greeting:
+    description: 'The greeting that was produced'
+    value: ${{ steps.build-greeting.outputs.greeting }}
+runs:
+  using: composite
+  steps:
+    - name: step-one
+      shell: bash
+      run: |
+        # TODO: do something with ${{ inputs.who-to-greet }} here — print it, whatever.
+        echo "TODO: step one"
+    - name: step-two
+      shell: bash
+      run: |
+        # TODO: a second step. Every run: step in a composite action needs its OWN
+        # shell: key — it is NOT inherited from the caller workflow or from step-one.
+        # Remove this shell: key later on purpose and watch what breaks.
+        echo "TODO: step two"
+    - name: build-greeting
+      id: build-greeting
+      shell: bash
+      run: |
+        # TODO: set the action's output here via GITHUB_OUTPUT, named `greeting` —
+        # that's what the outputs.greeting.value mapping above reads from.
+        echo "greeting=TODO" >> "$GITHUB_OUTPUT"

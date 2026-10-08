@@ -1,0 +1,48 @@
+name: m5_workflow
+run-name: milestone-5
+
+on:
+  workflow_dispatch:
+
+jobs:
+  composite:
+    runs-on: [self-hosted]
+    steps:
+      - uses: actions/checkout@v6
+      - name: run composite action
+        id: greet
+        uses: ./.github/actions/m5-composite
+        with:
+          who-to-greet: 'Milestone 5'
+      - run: 'echo "composite action said: ${{ steps.greet.outputs.greeting }}"'
+      # TODO: once this works, break it on purpose — remove one shell: key from
+      # .github/actions/m5-composite/action.yml, push, rerun, read the error, put it
+      # back.
+
+  javascript:
+    runs-on: [self-hosted]
+    steps:
+      - uses: actions/checkout@v6
+      - name: run javascript action
+        id: greet
+        uses: ./.github/actions/m5-js
+        with:
+          who-to-greet: 'Milestone 5'
+      - run: 'echo "js action said the time was: ${{ steps.greet.outputs.time }}"'
+      # TODO: once this works, ship an UNBUNDLED version on purpose — delete dist/
+      # (or just .gitignore it and don't commit it), push, rerun, and read the
+      # module-not-found error. Rebuild and commit dist/ again afterward.
+
+  # Docker actions need a LINUX runner, same restriction as service containers in
+  # Milestone 3 — Kylo's on macOS, so this one job runs on ubuntu-latest instead.
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: run docker action
+        uses: ./.github/actions/m5-docker
+        with:
+          who-to-greet: 'Milestone 5'
+      # TODO: once this works, misname an input in action.yml (who-to-greet ->
+      # who_to_greet) without changing this workflow's `with:` block. Watch whether
+      # that fails loudly or just silently passes nothing.

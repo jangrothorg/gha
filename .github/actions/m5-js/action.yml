@@ -1,0 +1,13 @@
+name: 'm5-js-greet'
+description: 'Milestone 5 JavaScript action — greets someone, reports back the time'
+inputs:
+  who-to-greet:
+    description: 'Who to greet'
+    required: true
+    default: 'World'
+outputs:
+  time:
+    description: 'The time the greeting happened'
+runs:
+  using: 'node20'
+  main: 'dist/index.js'
