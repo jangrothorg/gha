@@ -105,7 +105,7 @@ whole _jobs_, a composite action supplies _steps_.
 - _Starter workflows have no update mechanism at all, by design_ — the template is copied at creation time into a completely independent file, with no link back. Change or deprecate the template later and every repo that already copied it keeps the old version forever, silently. If a scaffold needs to evolve and reach consumers after the fact, it's the wrong tool — publish a reusable workflow instead (pin `@v1` for a moving target, a SHA to stay frozen) and have the starter template's body just be a thin `uses:` call into it.
 - _`secrets: inherit`_ passes **every** secret available to the caller — org, repo, and environment — without naming any of them. Convenient and deliberately broad; the security domain (Milestone 11) prefers explicit mapping precisely because inherit grants access the called workflow never declared a need for.
 
-## Milestone 5 — Custom actions I: building all three types (2 sessions)
+## Milestone 5 — Custom actions I: building all three types (2 sessions) ✅ closed 2026-10-19
 
 - **Theory (30min):** [Metadata syntax for GitHub Actions](https://docs.github.com/en/actions/reference/workflows-and-actions/metadata-syntax) — required fields per action type. [Creating a composite action](https://docs.github.com/en/actions/tutorials/create-actions/create-a-composite-action). [Creating a JavaScript action](https://docs.github.com/en/actions/tutorials/create-actions/create-a-javascript-action). [Creating a Docker container action](https://docs.github.com/en/actions/tutorials/use-containerized-services/create-a-docker-container-action).
 - **Hands-on (1-2 sessions):** Build a composite action (`runs.using: composite`) wrapping three `run` steps, each needing its own `shell:`; wire an input through and set an output via `GITHUB_OUTPUT` plus `outputs.<x>.value`. Build a JavaScript action (`runs.using: node20`) using `@actions/core` for inputs/outputs, bundle with `ncc`, and commit `dist/`. Build a Docker action (`runs.using: docker`) with a Dockerfile, `args`, and `env`. Break each one on purpose — remove a `shell:`, misname an input, ship an unbundled JS action — and read the failure until it's recognisable at a glance.
@@ -126,6 +126,33 @@ whole _jobs_, a composite action supplies _steps_.
 
 - _Composite action_: every `run:` step needs its own `shell:` (it isn't inherited from the caller); inputs come through as `${{ inputs.x }}`.
 - _Docker action_: Linux-only, slower to start (image build/pull on every cold run), but gives full control of the execution environment.
+
+**Secrets and composite actions:**
+
+- A composite action has **no `secrets` context** — only `inputs`, `github`, `env`, `runner`, `steps`, `job`. The caller passes each secret as an ordinary **input** (`with: api-token: ${{ secrets.API_TOKEN }}`); the action reads `${{ inputs.api-token }}`.
+- **There is no `secrets: inherit` for composite actions.** That exists only for reusable workflows (`jobs.<id>.uses` + `secrets: inherit`). Composite actions get secrets one input at a time.
+- Masking survives the pass-through (the value came from `secrets.*` in the caller). Pass it into a step via `env:` rather than interpolating `${{ inputs.x }}` into `run:` — avoids script injection.
+- Outputs are **not** auto-masked: re-emitting a secret through `GITHUB_OUTPUT` can lose masking; use `::add-mask::`.
+- An input `default:` can't reference `secrets`. The exception is `default: ${{ github.token }}` — the `github` context is available.
+- Workarounds that defeat the point: job/step-level `env:` set by the caller leaks into the action's steps (scope it to the one calling step); `toJSON(secrets)` as one input hands over everything, including secrets the action doesn't need.
+
+**Composite action vs reusable workflow** (reuses _steps_ vs reuses _jobs_):
+
+| | Composite action | Reusable workflow |
+|---|---|---|
+| Called at | step level (`steps[*].uses`) | job level (`jobs.<id>.uses`) |
+| Runs on | the caller's runner and job | its own job(s) and runner(s) |
+| Contains | steps only | full jobs: `runs-on`, `needs`, `matrix`, `services`, `environment`, `permissions` |
+| Secrets | passed as inputs, no `inherit` | `secrets:` block or `secrets: inherit` |
+| Shares workspace with caller | yes, same job | no, separate job |
+| Lives in | `action.yml`, any repo/directory | `.github/workflows/*.yml` with `on: workflow_call` |
+| Nesting limit | up to 10 levels of composite nesting | up to 4 levels of workflow calls |
+| In the log | one step, inner steps visible | separate jobs in the run graph |
+
+- **Pick composite** for a handful of steps inside one job that need the caller's checked-out files/environment, or when publishing a versioned `uses:` action.
+- **Pick reusable workflow** for a whole pipeline: multiple jobs, `needs` ordering, matrix, environments with approvals, different runners or `permissions` per job, centralised secrets.
+- Traps: a composite action can't have `runs-on`, `needs`, `services` or `strategy` (needs those → reusable workflow). A reusable workflow can't be called from a step. A composite action can call other actions (including composites) but not a reusable workflow. "Share steps within the same job/workspace" → composite.
+- The third reuse model (Milestone 4) is the starter workflow template: copied, owned by the copier, not called at runtime, so updates don't propagate.
 
 ## Milestone 6 — Custom actions II: versioning, distribution, debugging (1-2 sessions)
 
