@@ -4,7 +4,11 @@
 # the container's $1, the same way any CLI tool reads positional arguments.
 # TODO: use $1 here, e.g. echo "Hello $1"
 
+echo "Hello $1"
+
+#
 # TODO: workflow commands work the same way inside a Docker action as anywhere else —
 # set an output via GITHUB_OUTPUT here too, e.g.:
 #   echo "greeted-at=$(date)" >> "$GITHUB_OUTPUT"
-echo "TODO: greet $1"
+
+echo "greeted-at=$(date)" >>"$GITHUB_OUTPUT"

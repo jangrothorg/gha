@@ -37,21 +37,3 @@ jobs:
     with:
       greeting: "called with secrets: inherit"
     secrets: inherit
-    # TODO: once both calls above have run, compare their logs for the
-    # "DEMO_SECRET is/is NOT visible here" line. With only one secret in this repo
-    # they'll look the same — the real difference between explicit mapping and
-    # `inherit` is what each call is GRANTED ACCESS TO, not what gets touched in this
-    # particular test. Add a second repo secret, then only pass it through the
-    # explicit-mapping call, and watch inherit expose it anyway.
-
-# --- Starter workflow: lives in a different repo, not this file ---
-# Needs its own `.github` repo in the org, with
-# workflow-templates/<name>.yml + workflow-templates/<name>.properties.json.
-# TODO:
-#   1. gh repo create jangrothorg/.github --public
-#   2. In it: workflow-templates/m4-starter.yml (any trivial workflow) plus
-#      workflow-templates/m4-starter.properties.json — "name" is the only required
-#      key; see the Creating workflow templates doc linked in the study plan.
-#   3. Back in gha: Actions tab -> New workflow -> it should show up under
-#      "By jangrothorg" alongside GitHub's own templates. Create one from it, then
-#      confirm editing the copy in gha does NOT touch the template in .github.

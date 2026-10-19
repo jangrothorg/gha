@@ -15,8 +15,8 @@ runs:
     - name: step-one
       shell: bash
       run: |
-        # TODO: do something with ${{ inputs.who-to-greet }} here — print it, whatever.
-        echo "TODO: step one"
+        echo "hello ${{ inputs.who-to-greet }}"
+      # TODO: do something with ${{ inputs.who-to-greet }} here — print it, whatever.\necho \"Hello \n"
     - name: step-two
       shell: bash
       run: |
@@ -30,4 +30,4 @@ runs:
       run: |
         # TODO: set the action's output here via GITHUB_OUTPUT, named `greeting` —
         # that's what the outputs.greeting.value mapping above reads from.
-        echo "greeting=TODO" >> "$GITHUB_OUTPUT"
+        echo "greeting=${{ inputs.who-to-greet }}" >> "$GITHUB_OUTPUT"

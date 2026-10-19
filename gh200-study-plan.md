@@ -36,7 +36,7 @@ Based on diagnostic conversation (2026-09-29), 1/16 cold. Milestone-based, no fi
   ```
 - _Crossing a job boundary_ needs a third piece: the producing job declares `jobs.<id>.outputs` mapping to the step output; the consuming job reads `needs.<id>.outputs.<name>`. This is the single most-tested data-flow pattern in domain 1 — worth being able to write cold.
 - _`workflow_dispatch` inputs_ are typed (`string`, `boolean`, `choice`, `environment`), can carry a `default` and a `required` flag, and are read via `${{ inputs.<name> }}` — same shape whether triggered from the UI, the CLI (`gh workflow run`), or the REST API.
-- _`repository_dispatch` and `workflow_run`_: `repository_dispatch` is a custom, client-defined event (you name the `event_type` yourself) fired via the REST API — the trigger for "an external system should kick off this workflow." `workflow_run` fires when a *different* workflow completes, letting you chain workflows without a direct `needs`/`uses` relationship. Both are genuine first-class Actions triggers — a "which of these is NOT a feature" question that picks "custom event triggers" as the non-feature is wrong, since this is exactly what it is.
+- _`repository_dispatch` and `workflow_run`_: `repository_dispatch` is a custom, client-defined event (you name the `event_type` yourself) fired via the REST API — the trigger for "an external system should kick off this workflow." `workflow_run` fires when a _different_ workflow completes, letting you chain workflows without a direct `needs`/`uses` relationship. Both are genuine first-class Actions triggers — a "which of these is NOT a feature" question that picks "custom event triggers" as the non-feature is wrong, since this is exactly what it is.
 - _`actions/github-script`_: a first-party action that gives you an authenticated Octokit client (`github`) inline in a workflow step, for GitHub API calls — comment, label, close — without writing a full custom action. `script:` takes inline JS; `context` carries the triggering event's data.
 
 ## Milestone 2 — Contexts, expressions, and where they're legal (2-3 sessions) ✅ closed 2026-10-02
@@ -51,7 +51,7 @@ Based on diagnostic conversation (2026-09-29), 1/16 cold. Milestone-based, no fi
 - _The availability table, the exam-favourite fact_: in `jobs.<id>.if` you may use **`github`, `needs`, `vars` and `inputs`** — and _not_ `env`, `secrets`, `steps` or `matrix`. A common wrong answer is gating a job on a secret's presence; you can't, so you promote it to a `vars` value or an output from an earlier job.
 - _Job summaries_: `GITHUB_STEP_SUMMARY` accepts Markdown, rendered on the run's summary page — good for test results, coverage, links. Separate from workflow commands like `::group::` and `::add-mask::`, which format the raw log rather than the summary page.
 - _Status-check functions default_: a step/job implicitly runs under `if: success()` unless you override it — this is why a cleanup step needs an explicit `if: always()`.
-- _Workflow command syntax, the exact gotcha_: `::error::<message>` — the message is everything after the second `::`, **not** a `message=` parameter. Optional parameters go *before* that, comma-separated with no space: `::error title=Build Failed,file=app.js,line=10::This is an error message`. Same shape for `::warning::` and `::notice::`. `::group::<title>` / `::endgroup::` fold log lines into a collapsible section; `::add-mask::<value>` redacts a value from the log for the rest of the run.
+- _Workflow command syntax, the exact gotcha_: `::error::<message>` — the message is everything after the second `::`, **not** a `message=` parameter. Optional parameters go _before_ that, comma-separated with no space: `::error title=Build Failed,file=app.js,line=10::This is an error message`. Same shape for `::warning::` and `::notice::`. `::group::<title>` / `::endgroup::` fold log lines into a collapsible section; `::add-mask::<value>` redacts a value from the log for the rest of the run.
 
 ## Milestone 3 — Matrices, job dependencies, service containers (2-3 sessions) ✅ closed 2026-10-06
 
@@ -122,11 +122,7 @@ whole _jobs_, a composite action supplies _steps_.
     post: dist/cleanup.js
   ```
 
-`pre`/`post` are optional hooks around the job's other steps. **The runner never runs
-`npm install`** — it checks out the action and executes `main` directly, so every dependency
-must already be in the repo: either committed `node_modules` or, far better, bundled into
-one file with `@vercel/ncc` with `dist/` committed. An unbundled action fails at runtime with
-a module-not-found error — the single most common custom-action bug.
+`pre`/`post` are optional hooks around the job's other steps. **The runner never runs `npm install`** — it checks out the action and executes `main` directly, so every dependency must already be in the repo: either committed `node_modules` or, far better, bundled into one file with `@vercel/ncc` with `dist/` committed. An unbundled action fails at runtime with a module-not-found error — the single most common custom-action bug.
 
 - _Composite action_: every `run:` step needs its own `shell:` (it isn't inherited from the caller); inputs come through as `${{ inputs.x }}`.
 - _Docker action_: Linux-only, slower to start (image build/pull on every cold run), but gives full control of the execution environment.
@@ -169,7 +165,7 @@ Half-time. No new theory — this is a checkpoint.
 - _Fork PRs_: anyone can fork a public repo and open a PR proposing workflow changes, so workflows triggered by fork PRs don't get secrets and may require approval depending on the contributor-approval policy. `pull_request_target` combined with checking out the PR head is the dangerous pattern — it runs with the base repo's full permissions and secrets against attacker-controlled code.
 - _`GITHUB_TOKEN`_: default permission scope is configurable at org and repo level (read-only vs read/write); a workflow can further narrow with its own `permissions:` block, never widen past the default.
 - _Secret precedence, confirmed hands-on_: `environment > repository > organization` — most specific wins, others simply aren't visible to that job.
-- _Organization rulesets_ are the modern successor to classic branch protection, with one key difference: a **repository** ruleset only governs that repo, an **organization** ruleset applies across many (or all) repos by name pattern or custom property, no per-repo setup. Three enforcement modes: **Active**, **Evaluate** (dry-run — logs what would be blocked without blocking), **Disabled**. **"Required workflows" is deprecated** — GitHub now points people at org rulesets' "require status checks to pass" rule instead: name a workflow's job as `<job name>` or a reusable workflow's as `<job name> / <reusable job name>`, and merging is blocked until it reports success. Caveat: that blocks the *merge*, it doesn't inject a missing workflow file into a repo that never had one.
+- _Organization rulesets_ are the modern successor to classic branch protection, with one key difference: a **repository** ruleset only governs that repo, an **organization** ruleset applies across many (or all) repos by name pattern or custom property, no per-repo setup. Three enforcement modes: **Active**, **Evaluate** (dry-run — logs what would be blocked without blocking), **Disabled**. **"Required workflows" is deprecated** — GitHub now points people at org rulesets' "require status checks to pass" rule instead: name a workflow's job as `<job name>` or a reusable workflow's as `<job name> / <reusable job name>`, and merging is blocked until it reports success. Caveat: that blocks the _merge_, it doesn't inject a missing workflow file into a repo that never had one.
 
 ## Milestone 9 — Enterprise II: runners at scale (2 sessions)
 
